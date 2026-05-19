@@ -115,10 +115,10 @@ CREATE TABLE Historial_Consulta (
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     resuelto BOOLEAN,
 
-
+```
 ```bash
 docker pull jrgiadach/soabus:latest
-```
+
     num_intentos INTEGER,
     CONSTRAINT fk_correo_hist FOREIGN KEY (id_correo) REFERENCES Correo(id_correo)
 );
