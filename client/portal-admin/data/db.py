@@ -139,7 +139,6 @@ def _generar_correos_recientes() -> None:
         ("Validación de práctica profesional",                "TRAMITE",       "derivado"),
     ]
     ahora = datetime.now()
-    global correos_recientes
     correos_recientes = []
     for i, (asunto, cat, estado) in enumerate(asuntos):
         correos_recientes.append({
