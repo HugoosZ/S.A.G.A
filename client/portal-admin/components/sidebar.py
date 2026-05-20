@@ -114,10 +114,11 @@ class Sidebar(ctk.CTkFrame):
         is_active = (key == self.active_view)
         bg = t.UDP_RED if is_active else "transparent"
         fg = "white" if is_active else "#B5B5B5"
+        button_text = f"  {icon_text} {label}" if icon_text else f"  {label}"
 
         btn = ctk.CTkButton(
             self,
-            text=f"  {label}",
+            text=button_text,
             anchor="w",
             font=(t.FONT_FAMILY, 13, "bold" if is_active else "normal"),
             height=42,
