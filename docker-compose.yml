@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # BUS
+  # ==========================================
+  saga-bus:
+    image: jrgiadach/soabus:latest
+    container_name: saga-bus-container
+    platform: linux/amd64
+    ports:
+      - "5001:5000"  # Expose 5000 port of the container on port 5001 of the host
+    networks:
+      - saga-network
+    restart: unless-stopped
+
+  # ==========================================
+  # VECTOR DATABASE (ChromaDB)
+  # ==========================================
+  saga-chromadb:
+    image: chromadb/chroma:latest
+    container_name: saga-chroma-container
+    ports:
+      - "8000:8000"  # Expose 8000 default port of the container on port 8000 of the host
+    volumes:
+      # Index the PDFs on local storage
+      - ./chroma_data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE # Volatile data (Vectors) in persistent storage instead of RAM
+      - ANONYMIZED_TELEMETRY=FALSE # Disable Telemetry 
+    networks:
+      - saga-network
+    restart: unless-stopped
+
+networks:
+  saga-network:
+    driver: bridge
