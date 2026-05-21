@@ -118,6 +118,87 @@ CREATE TABLE Historial_Consulta (
     CONSTRAINT fk_correo_hist FOREIGN KEY (id_correo) REFERENCES Correo(id_correo)
 );
 ```
+
+## Infraestructura con Docker Compose
+
+El proyecto incluye un archivo `docker-compose.yml` para levantar los servicios base:
+
+- `saga-bus`
+    - Imagen: `jrgiadach/soabus:latest`
+    - Contenedor: `saga-bus-container`
+    - Plataforma: `linux/amd64`
+    - Puerto: `5001` (host) -> `5000` (contenedor)
+
+- `saga-chromadb`
+    - Imagen: `chromadb/chroma:latest`
+    - Contenedor: `saga-chroma-container`
+    - Puerto: `8000` (host) -> `8000` (contenedor)
+    - Volumen persistente: `./chroma_data:/chroma/chroma`
+    - Variables:
+        - `IS_PERSISTENT=TRUE`
+        - `ANONYMIZED_TELEMETRY=FALSE`
+
+Ambos servicios comparten la red de Docker `saga-network` y usan `restart: unless-stopped`.
+
+### Comandos utiles
+
+Levantar servicios:
+
+```bash
+docker-compose up -d
+```
+
+Ver estado:
+
+```bash
+docker-compose ps
+```
+
+Ver logs:
+
+```bash
+docker-compose logs -f
+```
+
+Detener servicios:
+
+```bash
+docker-compose down
+```
+
+### Acceder a servicios
+
+Verificar contenedores activos:
+
+```bash
+docker ps
+```
+
+Entrar al contenedor del BUS:
+
+```bash
+docker exec -it saga-bus-container /bin/sh
+```
+
+Entrar al contenedor de ChromaDB:
+
+```bash
+docker exec -it saga-chroma-container /bin/sh
+```
+
+Probar acceso HTTP a ChromaDB desde host:
+
+```bash
+curl http://localhost:8000/api/v1/heartbeat
+```
+
+Notas de acceso:
+
+- BUS: expuesto en `localhost:5001` (TCP).
+- ChromaDB: expuesto en `http://localhost:8000`.
+
+Si solo necesitas descargar la imagen del BUS manualmente:
+
 ```bash
 docker pull jrgiadach/soabus:latest
 ```
