@@ -22,11 +22,7 @@ def read_pdf(path: str) -> str:
     for page in reader.pages:
         t = page.extract_text()
         text.append(t or "")
-    _normalize = _chunk_mod.get('_normalize') if isinstance(_chunk_mod, dict) else None
-    if callable(_normalize):
-        return [_normalize(p) for p in text]
-    else:
-        return [p.strip() for p in text]
+    return [normalize_text(p) for p in text]
 
 
 def load_file_to_text(path: str, force_ocr: bool = None) -> str:
