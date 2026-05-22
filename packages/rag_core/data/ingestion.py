@@ -25,7 +25,7 @@ def read_pdf(path: str) -> list[str]:
     return [normalize_text(p) for p in text]
 
 
-def load_file_to_text(path: str, force_ocr: bool = None) -> str:
+def load_file_to_text(path: str, force_ocr: bool = None) -> list[str]:
     ext = os.path.splitext(path)[1].lower()
     use_marker_ocr = config.FORCE_MARKER_OCR if force_ocr is None else force_ocr
 
