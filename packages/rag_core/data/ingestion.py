@@ -155,11 +155,10 @@ def ingest_files(
                 continue
 
             accept = True
-            if dedup_threshold and dedup_threshold < 1.0 and len(seen_embeddings) > 0:
-                emb_client = EmbeddingClient()
-                q_emb = emb_client.embed([ch_clean])
-                if isinstance(q_emb, list) and len(q_emb) == 1:
-                    q_emb = q_emb[0]
+            q_emb = None
+            if dedup_threshold and dedup_threshold < 1.0:
+                # Calcular embedding una sola vez para este chunk y reutilizarlo
+                q_emb = emb.embed(ch_clean)
                 for d_emb in seen_embeddings:
                     dot = sum(a * b for a, b in zip(q_emb, d_emb))
                     norm_q = sqrt(sum(a * a for a in q_emb))
@@ -174,10 +173,8 @@ def ingest_files(
                 continue
 
             seen_hashes.add(h)
-            emb_client = EmbeddingClient()
-            emb = emb_client.embed([ch_clean])
-            if isinstance(emb, list) and len(emb) == 1:
-                seen_embeddings.append(emb[0])
+            if q_emb is not None:
+                seen_embeddings.append(q_emb)
 
             metadata = {"source": os.path.basename(path), "chunk": i}
             if ch_dict.get("page_start") is not None:
