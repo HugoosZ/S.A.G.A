@@ -7,6 +7,7 @@ S.A.G.A/
 │
 ├── .gitignore
 ├── README.md
+├── requirements.txt
 │
 ├── bus/                               # Componente Central: Enterprise Service Bus (ESB)
 │   ├── soa_bus.py                     # Orquestador principal de conexiones por sockets
@@ -14,7 +15,21 @@ S.A.G.A/
 │
 ├── shared/                            # Capa compartida de datos y utilidades comunes
 │   ├── __init__.py
-│   └── database.py                    # Configuración de persistencia (PostgreSQL)
+│   ├── database.py                    # Configuración de persistencia (PostgreSQL)
+│   ├── service_base.py                # Clase base para todos los servicios
+│   └── soa_lib.py                     # Funciones de comunicación SOA
+│
+├── packages/                          # PAQUETES REUTILIZABLES
+│   └── rag_core/                      # Core del sistema RAG (Retrieval-Augmented Generation)
+│       ├── data/                      # Procesamiento y gestión de datos
+│       │   ├── ingestion.py           # Ingestión de documentos en ChromaDB
+│       │   ├── chunking.py            # División de texto en chunks
+│       │   └── marker.py              # Extracción de texto con OCR (Marker)
+│       ├── models/                    # Modelos y clientes de IA
+│       │   └── embeddings.py          # Cliente de embeddings (Google Generative AI)
+│       └── utils/                     # Utilidades compartidas
+│           ├── config.py              # Configuración centralizada
+│           └── logger.py              # Sistema de logging
 │
 ├── services/                          # COMPONENTES DE SERVICIO (Taxonomía Oficial)
 │   ├── recep/                         # Servicio de Gestión de Recepción de Correos
@@ -29,9 +44,14 @@ S.A.G.A/
 │   ├── casos/                         # Servicio de Gestión de Casos
 │   │   └── main.py
 │   ├── docum/                         # Servicio de Gestión de Documentos
-│   │   └── main.py
+│   │   ├── main.py
+│   │   ├── Dockerfile                 # Containerización del servicio
+│   │   └── test_docum_client.py       # Cliente de pruebas
 │   └── metri/                         # Servicio de Métricas y Auditoría
 │       └── main.py
+│
+├── data/                              # Base de datos de persistencia
+│   └── chroma_data/                   # Base de datos vectorial (ChromaDB)
 │
 └── clients/                           # COMPONENTES CLIENTE
     ├── monitor_agente/                # Agente Monitor de Correo Entrante (Segundo plano)
@@ -133,7 +153,7 @@ El proyecto incluye un archivo `docker-compose.yml` para levantar los servicios 
     - Imagen: `chromadb/chroma:latest`
     - Contenedor: `saga-chroma-container`
     - Puerto: `8000` (host) -> `8000` (contenedor)
-    - Volumen persistente: `./chroma_data:/chroma/chroma`
+    - Volumen persistente: `./data/chroma_data:/data`
     - Variables:
         - `IS_PERSISTENT=TRUE`
         - `ANONYMIZED_TELEMETRY=FALSE`
@@ -201,4 +221,9 @@ Si solo necesitas descargar la imagen del BUS manualmente:
 
 ```bash
 docker pull jrgiadach/soabus:latest
+```
+Ejecución de test:
+```bash
+docker exec -it saga-service-docum /bin/sh
+python -m services.docum.test_docum_client
 ```

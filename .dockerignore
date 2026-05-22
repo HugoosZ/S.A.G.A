@@ -1,0 +1,22 @@
+.venv/
+venv/
+ENV/
+
+# Ignore data
+data/
+
+# Ignore documents
+resources/
+
+# Ignore temporaly Python cache
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Ignore local configurations of Git and IDEs
+.git/
+.gitignore
+.vscode/
+.idea/

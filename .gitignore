@@ -6,3 +6,5 @@ venv
 dist/
 build/
 *.spec
+/data/chroma_data/
+/chroma_data/
