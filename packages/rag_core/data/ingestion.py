@@ -199,8 +199,9 @@ def ingest_files(
     docs_insertados = []
 
     if documents:
-        if dry_run:
-            logger.info(f"Dry-run ingest: {len(documents)} documents would be added to collection '{collection_name}'")
+        if dry_run or not persist:
+            mode = "Dry-run" if dry_run else "Non-persistent"
+            logger.info(f"{mode} ingest: {len(documents)} documents would be added to collection '{collection_name}'")
             return documents
         else:
             logger.info(f"Indexando {len(documents)} fragmentos en ChromaDB de forma segura...")
