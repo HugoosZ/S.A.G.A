@@ -1,7 +1,6 @@
 import os
 from typing import List, Optional
-from packages.rag_core.data.chunking import chunk_text
-from packages.rag_core.data.chunking import __dict__ as _chunk_mod
+from packages.rag_core.data.chunking import chunk_text, normalize_text
 from packages.rag_core.models.embeddings import EmbeddingClient
 from packages.rag_core.utils import config
 from packages.rag_core.utils.logger import logger
