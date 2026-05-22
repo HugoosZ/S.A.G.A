@@ -85,3 +85,16 @@ En la versión final de SAGA, el módulo `data/db.py` se reemplaza por un client
 La arquitectura de la aplicación está diseñada para que esa migración requiera cambios solo dentro de `data/db.py`, sin tocar las vistas ni los componentes.
 
 ---
+
+## Workflow para usar Makefile
+### Para iniciar al aplicación
+```bash
+make install # Instalar las dependencias
+make run # Correr la aplicación con entorno virtual
+```
+
+### Para iniciar contenedores
+```bash
+make up # iniciar BUS + ChromaDB
+make down # detener contenedores
+```
