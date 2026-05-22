@@ -153,7 +153,7 @@ El proyecto incluye un archivo `docker-compose.yml` para levantar los servicios 
     - Imagen: `chromadb/chroma:latest`
     - Contenedor: `saga-chroma-container`
     - Puerto: `8000` (host) -> `8000` (contenedor)
-    - Volumen persistente: `./chroma_data:/chroma/chroma`
+    - Volumen persistente: `./data/chroma_data:/data`
     - Variables:
         - `IS_PERSISTENT=TRUE`
         - `ANONYMIZED_TELEMETRY=FALSE`
