@@ -222,7 +222,6 @@ Si solo necesitas descargar la imagen del BUS manualmente:
 ```bash
 docker pull jrgiadach/soabus:latest
 ```
-
 Ejecución de test:
 ```bash
 docker exec -it saga-service-docum /bin/sh
