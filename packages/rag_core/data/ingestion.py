@@ -16,7 +16,7 @@ from PyPDF2 import PdfReader
 
 from packages.rag_core.data.marker import extract_text_with_marker
 
-def read_pdf(path: str) -> str:
+def read_pdf(path: str) -> list[str]:
     reader = PdfReader(path)
     text = []
     for page in reader.pages:
