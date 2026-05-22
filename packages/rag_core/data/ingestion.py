@@ -136,8 +136,9 @@ def ingest_files(
                 logger.info(f"Skipping empty or whitespace-only chunk for {path} (chunk {i})")
                 continue
 
-            chunk_id = f"chunk_{os.path.basename(path).replace('.', '_')}_{i}"
-
+            import hashlib
+            chunk_hash = hashlib.sha1(ch_clean.encode("utf-8")).hexdigest()[:12]
+            chunk_id = f"chunk_{os.path.basename(path).replace('.', '_')}_{i}_{chunk_hash}"
             if chroma_collection is not None:
                 try:
                     res = chroma_collection.get(ids=[chunk_id])
