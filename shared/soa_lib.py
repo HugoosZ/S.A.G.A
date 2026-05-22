@@ -1,6 +1,6 @@
 import socket
 
-def connect_to_bus(host='localhost', port=5001):
+def connect_to_bus(host='localhost', port=5000):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print(f"Conectando a {host} en puerto {port}...")
     sock.connect((host, port)) 

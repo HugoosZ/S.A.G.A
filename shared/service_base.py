@@ -1,6 +1,6 @@
 import json
+import os
 from shared.soa_lib import connect_to_bus, send_message, receive_message
-
 
 def start_service(service_name, process_function):
     """
@@ -12,7 +12,13 @@ def start_service(service_name, process_function):
         raise ValueError(
             f"El nombre del servicio debe tener exactamente 5 caracteres. Recibido: '{service_name}'")
 
-    sock = connect_to_bus()
+
+    bus_host = os.getenv("BUS_HOST", "saga-bus-container")
+    bus_port = int(os.getenv("BUS_PORT", "5000"))
+
+
+    sock = connect_to_bus(host=bus_host, port=bus_port)
+
     try:
         print(f"[{service_name.upper()}] Registrando servicio...")
         send_message(sock, "sinit", service_name)
@@ -34,10 +40,10 @@ def start_service(service_name, process_function):
                 # convierte el payload que está en formato JSON a un diccionario de Python
                 request_data = json.loads(raw_payload)
 
-                # se le entrega los datos para trabajar a la función X que se vaya a crear en cada servicio, y se espera que retorne un diccionario con la respuesta
+                # se le entrega los datos para trabajar a la función
                 response_data = process_function(request_data)
 
-                # valida que la respuesta efectivamente sea un diccionario según el esquema
+                # valida que la respuesta efectivamente sea un diccionario
                 if not isinstance(response_data, dict):
                     raise ValueError(
                         "La función de procesamiento debe retornar un diccionario.")
@@ -55,8 +61,7 @@ def start_service(service_name, process_function):
                     "message": str(e)
                 }
 
-            # devuelve la respuesta al Bus convirtiendo el diccionario a un string JSON
-            # proceso inverso al de arriba
+            # devuelve la respuesta al Bus
             response_str = json.dumps(response_data)
             send_message(sock, service_name, response_str)
 
