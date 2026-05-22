@@ -2,5 +2,9 @@ __pycache__
 .DS_Store
 .env
 .venv
+venv
+dist/
+build/
+*.spec
 /data/chroma_data/
 /chroma_data/
