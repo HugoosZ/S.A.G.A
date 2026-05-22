@@ -213,8 +213,8 @@ def ingest_files(
                     vectordb.add_documents([doc], ids=[target_id])
                     docs_insertados.append(doc)
                 except Exception as chunk_err:
-                    logger.error(f"[X] Omitiendo chunk {idx} debido a una anomalía o filtro de la API de Google: {chunk_err}")
-                    logger.error(f"Texto conflictivo: {doc.page_content[:100]}...")
+                    logger.error(f"[X] Omitiendo chunk {idx} (id={target_id}) debido a una anomalía o filtro de la API de Google: {chunk_err}")
+                    logger.error(f"Metadata del chunk omitido: {doc.metadata}")
             
             logger.info(f"Ingesta finalizada: {len(docs_insertados)}/{len(documents)} guardados en ChromaDB.")
             
