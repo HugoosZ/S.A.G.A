@@ -26,9 +26,9 @@ def clean_subject(subject: str) -> str:
     Limpia el asunto del correo eliminando caracteres especiales y los prefijos.
     """
     subject = subject.strip()
-    subject = re.sub(r'[^\w\s]', '', subject)  # Elimina caracteres especiales
     # Elimina prefijos comunes
-    subject = re.sub(r'^(Re|Fw|Aw):\s*', '', subject)
+    subject = re.sub(r'^(Re|re|Fw|Aw):\s*', '', subject)
+    subject = re.sub(r'[^\w\s]', '', subject)  # Elimina caracteres especiales
     return subject.lower()
 
 def clean_body(body: str) -> str:
