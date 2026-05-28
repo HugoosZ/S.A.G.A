@@ -1,6 +1,7 @@
 import re
 from typing import Dict, Any
 from email.utils import parseaddr
+import unicodedata
 
 REQUIRED_FIELDS = ['sender', 'subject', 'body', 'message_id', 'timestamp']
 
@@ -27,8 +28,7 @@ def clean_subject(subject: str) -> str:
     """
     subject = subject.strip()
     # Elimina prefijos comunes
-    subject = re.sub(r'^(Re|re|Fw|Aw):\s*', '', subject)
-    subject = re.sub(r'[^\w\s]', '', subject)  # Elimina caracteres especiales
+    subject = re.sub(r'^(Re|re|Fw|Aw):\s*', '', subject, flags=re.IGNORECASE)
     return subject.lower()
 
 def clean_body(body: str) -> str:
@@ -36,6 +36,8 @@ def clean_body(body: str) -> str:
     Limpia el cuerpo del correo eliminando espacios en blanco y caracteres especiales.
     """
     body = body.strip()
+    body = re.sub(r'http\S+', '', body)  # Elimina URLs
+    body = re.sub(r'\[[^\]]*\]', '', body)  # Elimina texto entre corchetes
     body = re.sub(r'\s+', ' ', body)  # Reemplaza múltiples espacios por uno solo
     return body
 
@@ -47,6 +49,14 @@ def normalizar_email_data(data: Dict[str, Any]) -> Dict[str, Any]:
     data['subject'] = clean_subject(data['subject'])
     data['body'] = clean_body(data['body'])
     return data
+
+def normalize_text(text: str) -> str:
+    if not text:
+        return ""
+
+    text = unicodedata.normalize("NFKC", text)
+    return text.lower()
+    
 
 def asignar_hilo(data: Dict[str, Any]) -> Dict[str, Any]:
     """
