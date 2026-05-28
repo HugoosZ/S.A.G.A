@@ -9,7 +9,8 @@ from shared.soa_lib import send_message
 from utils import (
     validate_email_data,
     normalizar_email_data,
-    asignar_hilo
+    asignar_hilo,
+    is_valid_email_content
 )
 
 SERVICE_NAME = "recep"
@@ -27,6 +28,10 @@ def process_email(data: dict) -> dict:
         if not validate_email_data(data):
             logger.warning("Datos de correo no válidos: %s", data)
             return {"status": "error", "message": "Invalid email data"}
+
+        if not is_valid_email_content(data):
+            logger.info("Correo filtrado: %s", data)
+            return {"status": "ignored", "message": "spam or irrelevant content"}
 
         normalized_data = normalizar_email_data(data)
 

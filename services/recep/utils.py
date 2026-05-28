@@ -66,3 +66,28 @@ def asignar_hilo(data: Dict[str, Any]) -> Dict[str, Any]:
         'hilo_id': data['message_id'],
         "is_reply": False
     }
+
+def is_valid_email_content(data: dict) -> bool:
+    subject = data.get("subject", "").lower()
+    body = data.get("body", "").lower()
+
+    spam_keywords = [
+        "unsubscribe",
+          "suscripción",
+         "newsletter",
+         "oferta",
+         "promoción",
+         "click aquí",
+          "haz clic",
+           "privacy",
+          "terms",
+        ]
+
+    # descarta si contiene palabras típicas de spam
+    if any(word in subject for word in spam_keywords):
+        return False
+
+    if any(word in body for word in spam_keywords):
+           return False
+
+    return True

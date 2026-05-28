@@ -5,14 +5,14 @@ from imapclient import IMAPClient
 import email
 from email.header import decode_header
 
-from shared.soa_lib import connect_to_bus, send_message
+from shared.soa_lib import connect_to_bus, send_message, receive_message
 
 # CONFIGURACIÓN
 IMAP_HOST = "imap.gmail.com"
 EMAIL_ACCOUNT = "natalia.ortega1@mail.udp.cl"
-EMAIL_PASSWORD = ""  
+EMAIL_PASSWORD = "wjpn ajyz vhyo xiti"  
 BUS_HOST = "localhost"
-BUS_PORT = 5001
+BUS_PORT = 5000
 
 SERVICE_TARGET = "recep"
 
@@ -90,7 +90,27 @@ def run():
 
                 send_message(sock, SERVICE_TARGET, json.dumps(email_data))
 
-            time.sleep(10) 
+                
+                response = receive_message(sock)
+
+                if response:
+                    decoded = response.decode("utf-8", errors="ignore")
+
+                    service = decoded[:5]
+                    status=decoded[5:7]
+                    payload = decoded[7:]
+
+                    logger.info(f"Servicio: {service}")
+                    logger.info(f"Status: {status}")
+                    logger.info(f"Payload raw: {payload}")
+
+                    try:
+                        data = json.loads(payload)
+                        logger.info(f"Payload JSON: {data}")
+                    except Exception as e:
+                        logger.error(f"Error parseando JSON: {e}")
+
+            time.sleep(10)
 
         except Exception as e:
             logger.error(f"Error en monitor: {e}")
