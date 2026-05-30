@@ -1,0 +1,22 @@
+FLUJO DE DATOS: 
+
+Cliente: Escucha la bandeja de entrada de Gmail mediante IMAP buscando correos no leídos bajo el filtro "Consulta de prueba SAGA". Realiza una poda inicial del body (eliminando respuestas citadas históricas) y envía el JSON crudo al Bus con destino al servicio recep.
+
+recep (Servicio): Valida que no sea spam, normaliza las direcciones y persistirá el registro en PostgreSQL. Reconstruye recursivamente toda la historia del hilo conversacional desde la base de datos.
+
+Contrato de Salida: recep empaqueta el presente (latest_message) y el pasado (full_history_text) en un JSON atómico y lo devuelve al Bus para que esté disponible para el servicio de RAG (ragsv) y Clasificación (class).
+
+PARA LEVANTARLO: 
+1. Configurar el correo y contraseña de aplicación en `clients/monitor_agente/main.py`.
+
+2. ESB CORRIENDO 
+
+3. LEVANTAR RECEP: Desde la terminal, navegar a la carpeta del servicio recep y ejecutar: `python main.py`
+
+4. LEVANTAR EL CLIENTE DE MONITOREO: Desde otra terminal, navegar a la carpeta del cliente monitor_agente y ejecutar: `python main.py`
+
+
+PARA PROBARLO:
+
+Enviar un correo a la cuenta configurada con el asunto "Consulta de prueba SAGA" y cualquier cuerpo de mensaje. El cliente de monitoreo detectará el correo, lo limpiará y enviará al servicio recep, que lo procesará y generará el contrato para el RAG. Puedes revisar los logs de ambos para verificar el flujo completo.
+
