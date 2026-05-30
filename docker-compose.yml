@@ -51,6 +51,21 @@ services:
       networks:
         - saga-network
       restart: unless-stopped
+  db:
+    image: postgres:15
+    container_name: saga-db-container
+    environment:
+      POSTGRES_USER: saga_user
+      POSTGRES_PASSWORD: saga_pass
+      POSTGRES_DB: saga_db
+    ports:
+      - "5432:5432"  
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  db_data:
 
 networks:
   saga-network:

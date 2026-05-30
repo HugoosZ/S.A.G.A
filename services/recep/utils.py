@@ -50,30 +50,30 @@ def normalizar_email_data(data: Dict[str, Any]) -> Dict[str, Any]:
     data['body'] = clean_body(data['body'])
     return data
 
-def normalize_text(text: str) -> str:
-    if not text:
-        return ""
+def asignar_hilo(data: dict) -> dict:
+    references = data.get("references")
+    in_reply_to = data.get("in_reply_to")
 
-    text = unicodedata.normalize("NFKC", text)
-    return text.lower()
-    
+    if references:
+        refs = references.strip().split()
+        hilo_id = refs[0]
 
-def asignar_hilo(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Asigna un hilo al correo basandose en el asunto y el remitente
-    """
-    in_reply_to = data.get('in_reply_to')
+        return {
+            **data,
+            "hilo_id": hilo_id,
+            "is_reply": True
+        }
 
     if in_reply_to:
-        return{
+        return {
             **data,
-            'hilo_id': in_reply_to,
+            "hilo_id": in_reply_to,
             "is_reply": True
         }
 
     return {
         **data,
-        'hilo_id': data['message_id'],
+        "hilo_id": data["message_id"],
         "is_reply": False
     }
 
@@ -101,3 +101,24 @@ def is_valid_email_content(data: dict) -> bool:
            return False
 
     return True
+
+def clean_reply_history(body: str) -> str:
+    import re
+
+    if not body:
+        return ""
+
+    # cortar en patrones típicos de respuesta
+    patterns = [
+        r"On .* wrote:",
+        r"El .* escribió:",
+        r"From: .*",
+        r"De: .*"
+    ]
+
+    for pattern in patterns:
+        parts = re.split(pattern, body, maxsplit=1)
+        if len(parts) > 1:
+            body = parts[0]
+
+    return body.strip()
