@@ -1,57 +1,57 @@
-# Se eliminó la línea "version" obsoleta
-
-networks:
-  saga-network:
-    driver: bridge
+version: '3.8'
 
 services:
+  # ==========================================
+  # BUS
+  # ==========================================
   saga-bus:
     image: jrgiadach/soabus:latest
     container_name: saga-bus-container
+    platform: linux/amd64
     ports:
-      - "5001:5000"
+      - "5001:5000"  # Expose 5000 port of the container on port 5001 of the host
     networks:
       - saga-network
     restart: unless-stopped
 
+  # ==========================================
+  # VECTOR DATABASE (ChromaDB)
+  # ==========================================
   saga-chromadb:
     image: chromadb/chroma:latest
     container_name: saga-chroma-container
     ports:
-      - "8000:8000"
+      - "8000:8000"  # Expose 8000 default port of the container on port 8000 of the host
     volumes:
-      - ./chroma_data:/chroma/chroma
+      # Index the PDFs on local storage
+      - ./data/chroma_data:/data
     environment:
-      - IS_PERSISTENT=TRUE
-      - ANONYMIZED_TELEMETRY=FALSE
+      - IS_PERSISTENT=TRUE # Volatile data (Vectors) in persistent storage instead of RAM
+      - ANONYMIZED_TELEMETRY=FALSE # Disable Telemetry 
     networks:
       - saga-network
     restart: unless-stopped
 
-  servicio-metricas:
-    build:
-      context: .
-      dockerfile: services/metri/Dockerfile
-    container_name: saga-servicio-metricas
-    networks:
-      - saga-network
-    environment:
-      - BUS_HOST=saga-bus-container 
-      - BUS_PORT=5000
-    depends_on:
-      - saga-bus
-    restart: unless-stopped
+  service-docum:
+      build:
+        context: .                          # root of monorepo have the context
+        dockerfile: services/docum/Dockerfile 
+      container_name: saga-service-docum
+      environment:
+        - GOOGLE_API_KEY=${GOOGLE_API_KEY} 
+        - BUS_HOST=saga-bus                 # Name of the bus service as defined in this docker-compose (saga-bus)
+        - BUS_PORT=5000                     # Native port of the bus inside the docker network
+        - CHROMA_HOST=saga-chromadb
+      volumes:
+        # shared local dir to bring PDFs from the PC to the container
+        - ./resources:/app/files
+      depends_on:
+        - saga-bus
+        - saga-chromadb
+      networks:
+        - saga-network
+      restart: unless-stopped
 
-  agente-monitor:
-    build:
-      context: .
-      dockerfile: clients/monitor_agente/Dockerfile
-    container_name: saga-agente-monitor
-    networks:
-      - saga-network
-    environment:
-      - BUS_HOST=saga-bus-container
-      - BUS_PORT=5000
-    depends_on:
-      - saga-bus
-    restart: unless-stopped
+networks:
+  saga-network:
+    driver: bridge

@@ -1,6 +1,9 @@
+import os
 import socket
 
-def connect_to_bus(host='localhost', port=5000):
+def connect_to_bus(host: str | None = None, port: int | None = None):
+    host = host or os.getenv("BUS_HOST", "localhost")
+    port = int(port or os.getenv("BUS_PORT", "5001"))
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     print(f"Conectando a {host} en puerto {port}...")
     sock.connect((host, port)) 
@@ -28,4 +31,3 @@ def receive_message(sock):
         if not chunk: break
         data += chunk
     return data
-

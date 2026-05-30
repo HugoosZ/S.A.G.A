@@ -1,6 +1,6 @@
 import json
-import os
 from shared.soa_lib import connect_to_bus, send_message, receive_message
+
 
 def start_service(service_name, process_function):
     """
