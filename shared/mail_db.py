@@ -13,7 +13,6 @@ def init_db():
     """
     Crea la tabla de emails e índices automáticamente si no existen en la DB.
     """
-    from shared.mail_db import get_connection
     
     conn = get_connection()
     cur = conn.cursor()
