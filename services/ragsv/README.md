@@ -154,6 +154,28 @@ El LLM puede devolver múltiples bloques. Cada bloque tiene un campo `type` que 
 
 ---
 
+## Personalidad del RAG y Reglas de Derivación (Secretaría Virtual)
+
+El asistente virtual está configurado a través del `SYSTEM_INSTRUCTIONS` (en `qa.py`) para actuar como un **primer filtro de la Secretaría de Estudios de la UDP**. Se rige por las siguientes reglas de respuesta:
+
+1. **Gestión Académica Resolutiva:** Responde de manera clara y basada en los documentos si hay información suficiente en el contexto recuperado.
+2. **Flag `DERIVAR A SECRETARIA`:** Si la consulta académica requiere intervención humana (ej. revisión de un caso particular, firmas, excepciones) o la información no está en los reglamentos, el LLM iniciará su texto exactamente con la frase `DERIVAR A SECRETARIA`. El cliente (frontend u otro servicio) puede buscar este "flag" al principio de la respuesta para derivar automáticamente el ticket o chat al personal humano.
+3. **Preguntas triviales sobre la UDP:** Si preguntan cosas cotidianas (ej. *¿dónde está la cafetería?* o *¿hay un Starbucks cerca de la facultad?*), el bot responderá de forma amable usando su conocimiento general sin derivar a secretaría.
+4. **Preguntas ajenas (fuera de contexto):** Si preguntan por el clima o le piden programar código, el bot rechazará la solicitud aclarando su propósito netamente universitario. Tampoco derivará estas dudas a secretaría.
+
+### Ejemplo de respuesta con derivación
+
+```json
+[
+  {
+    "type": "text",
+    "text": "DERIVAR A SECRETARIA\nEl estudiante está solicitando una excepción a la regla de asistencia del Artículo 4, lo cual requiere evaluación directa de la Dirección de Carrera."
+  }
+]
+```
+
+---
+
 ## Cómo extraer la respuesta desde otro servicio
 
 Cuando otro microservicio de SAGA consume la respuesta de `ragsv`, debe:
