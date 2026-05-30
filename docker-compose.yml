@@ -52,6 +52,23 @@ services:
         - saga-network
       restart: unless-stopped
 
+  service-ragsv:
+      build:
+        context: .
+        dockerfile: services/ragsv/Dockerfile 
+      container_name: saga-service-ragsv
+      environment:
+        - GOOGLE_API_KEY=${GOOGLE_API_KEY} 
+        - BUS_HOST=saga-bus                 
+        - BUS_PORT=5000                     
+        - CHROMA_HOST=saga-chromadb
+      depends_on:
+        - saga-bus
+        - saga-chromadb
+      networks:
+        - saga-network
+      restart: unless-stopped
+
 networks:
   saga-network:
     driver: bridge

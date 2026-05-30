@@ -13,7 +13,7 @@ CHROMA_PERSIST_DIR: str = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
 EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "gemini-embedding-2-preview")
 
 # Modelo LLM por defecto para generación. Variable de entorno: LLM_MODEL
-LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4.1-nano")
+LLM_MODEL: str = os.getenv("LLM_MODEL", "gemma-4-26b-a4b-it")
 
 # Número por defecto de documentos a devolver en búsquedas (top-k). Variable de entorno: DEFAULT_TOP_K
 DEFAULT_TOP_K: int = int(os.getenv("DEFAULT_TOP_K", "15"))
