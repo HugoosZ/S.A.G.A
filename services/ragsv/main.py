@@ -33,7 +33,7 @@ def process_request(payload: dict) -> dict:
         # Llamamos al motor cognitivo RAG
         result = answer_with_rag(
             question=question,
-            k=payload.get("k", 4),
+            k=payload.get("k"),
             collection_name=payload.get("collection_name")
         )
         
