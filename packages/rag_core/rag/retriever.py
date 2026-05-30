@@ -74,6 +74,24 @@ def get_relevant_docs(query: str, k: int = None, collection_name: str = None) ->
         logger.warning(f"No se pudo obtener colección nativa para rerank, fallando elegantemente: {e}")
         native_collection = None
 
+    cached_embeddings = {}
+    if native_collection is not None:
+        candidate_ids = [
+            (getattr(doc, 'metadata', {}) or {}).get('chunk_id')
+            for doc in candidates
+        ]
+        candidate_ids = [doc_id for doc_id in candidate_ids if doc_id]
+        if candidate_ids:
+            try:
+                resp = native_collection.get(ids=candidate_ids, include=['embeddings'])
+                ids = resp.get('ids') or []
+                embeddings = resp.get('embeddings') or []
+                cached_embeddings = {
+                    doc_id: emb for doc_id, emb in zip(ids, embeddings) if emb is not None
+                }
+            except Exception as db_err:
+                logger.debug(f"Error al extraer embeddings por lote: {db_err}")
+
     # 3. Emparejamiento y cálculo de Distancia de Coseno
     for doc in candidates:
         meta = getattr(doc, 'metadata', {}) or {}
@@ -86,13 +104,8 @@ def get_relevant_docs(query: str, k: int = None, collection_name: str = None) ->
         # b) Prioridad 2: Buscar el vector nativo en BD usando el chunk_id exacto (¡Costo $0 y ultra rápido!)
         if d_emb is None and native_collection is not None:
             doc_id = meta.get('chunk_id')
-            if doc_id:
-                try:
-                    resp = native_collection.get(ids=[doc_id], include=['embeddings'])
-                    if resp and resp.get('embeddings') and len(resp.get('embeddings')) > 0:
-                        d_emb = resp['embeddings'][0]
-                except Exception as db_err:
-                    logger.debug(f"Error al extraer embedding del ID {doc_id}: {db_err}")
+            if doc_id and doc_id in cached_embeddings:
+                d_emb = cached_embeddings[doc_id]
 
         # c) Prioridad 3: Fallback (Solo si todo lo anterior falla, recalcula con Gemini)
         if d_emb is None:
