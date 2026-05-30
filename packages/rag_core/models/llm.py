@@ -25,4 +25,4 @@ class Agent:
             return response.content
         except Exception as e:
             logger.error(f"Error generando respuesta con Gemini: {e}")
-            return f"Error interno en la generación de respuesta: {e}"
+            raise RuntimeError(f"Error interno en la generación de respuesta: {e}") from e
