@@ -1,7 +1,6 @@
 import re
 from typing import Dict, Any
 from email.utils import parseaddr
-import unicodedata
 
 REQUIRED_FIELDS = ['sender', 'subject', 'body', 'message_id', 'timestamp']
 
