@@ -35,7 +35,7 @@ def ingest_all_pdfs(directory="./files"):
             print(f"No se recibió respuesta para {filename}.")
         else:
             try:
-                # El prefijo es "documOK", que son 7 caracteres, no 5.
+                # El prefijo es "documOK", que son 7 caracteres.
                 decoded = resp[7:].decode('utf-8', errors='ignore')
                 parsed = json.loads(decoded)
                 if parsed.get("status") == "success":
