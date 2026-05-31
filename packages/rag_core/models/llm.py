@@ -22,7 +22,10 @@ class Agent:
             response = self._client.invoke(prompt)
             if isinstance(response, str):
                 return response
-            return response.content
+            content = response.content
+            if isinstance(content, list):
+                return "".join([block.get("text", "") if isinstance(block, dict) else str(block) for block in content])
+            return str(content)
         except Exception as e:
             logger.error(f"Error generando respuesta con Gemini: {e}")
             raise RuntimeError(f"Error interno en la generación de respuesta: {e}") from e

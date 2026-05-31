@@ -20,3 +20,5 @@ python-dotenv>=1.0.0
 
 #BUS
 SALib>=1.4.0
+
+pycryptodome
