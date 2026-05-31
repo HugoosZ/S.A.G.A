@@ -30,12 +30,21 @@ def process_request(payload: dict) -> dict:
             
         logger.info(f"Procesando pregunta: '{question}'")
         
-        # Llamamos al motor cognitivo RAG
-        result = answer_with_rag(
-            question=question,
-            k=payload.get("k"),
-            collection_name=payload.get("collection_name")
-        )
+        # Seleccionamos el motor cognitivo a usar (por defecto el RAG estándar)
+        engine = payload.get("engine", "standard")
+        
+        if engine == "react":
+            from packages.rag_core.rag.ReAct import run_react_agent
+            result = run_react_agent(
+                question=question,
+                k=payload.get("k")
+            )
+        else:
+            result = answer_with_rag(
+                question=question,
+                k=payload.get("k"),
+                collection_name=payload.get("collection_name")
+            )
         
         # Devolvemos un dict nativo, la librería lo convierte a string JSON
         return {
@@ -43,8 +52,9 @@ def process_request(payload: dict) -> dict:
             "answer": result.get("answer"),
             "tokens_used": result.get("tokens_used"),
             "query_type": result.get("query_type"),
-            "sources_used": result.get("sources_used"),
-            "files_focus": result.get("files_focus")
+            "calls_used": result.get("calls_used"),
+            "sources_used": result.get("sources_used", []),
+            "files_focus": result.get("files_focus", [])
         }
         
     except Exception as e:
