@@ -32,6 +32,60 @@ services:
       - saga-network
     restart: unless-stopped
 
+  service-recep:
+      build:
+        context: .
+        dockerfile: services/recep/Dockerfile 
+      container_name: saga-service-recep
+      environment:
+        - BUS_HOST=saga-bus
+        - BUS_PORT=5000
+        - POSTGRES_USER=saga_user
+        - POSTGRES_PASSWORD=saga_pass
+        - POSTGRES_DB=saga_db
+        - POSTGRES_HOST=db
+      depends_on:
+        - saga-bus
+        - db
+      networks:
+        - saga-network
+      restart: unless-stopped
+
+  service-ragsv:
+      build:
+        context: .
+        dockerfile: services/ragsv/Dockerfile 
+      container_name: saga-service-ragsv
+      environment:
+        - GOOGLE_API_KEY=${GOOGLE_API_KEY} 
+        - BUS_HOST=saga-bus                 
+        - BUS_PORT=5000                     
+        - CHROMA_HOST=saga-chromadb
+      depends_on:
+        - saga-bus
+        - saga-chromadb
+      networks:
+        - saga-network
+      restart: unless-stopped
+
+
+  monitor-agente:
+        build:
+          context: .
+          dockerfile: clients/monitor_agente/Dockerfile 
+        container_name: saga-monitor-agente
+        environment:
+          - BUS_HOST=saga-bus
+          - BUS_PORT=5000
+          - EMAIL_IMAP_SERVER=${EMAIL_IMAP_SERVER}
+          - EMAIL_USUARIO=${EMAIL_USUARIO}
+          - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+        depends_on:
+          - saga-bus
+        networks:
+          - saga-network
+        restart: always
+
   service-docum:
       build:
         context: .                          # root of monorepo have the context
@@ -52,37 +106,22 @@ services:
         - saga-network
       restart: unless-stopped
   db:
-    image: postgres:15
-    container_name: saga-db-container
-    environment:
-      POSTGRES_USER: saga_user
-      POSTGRES_PASSWORD: saga_pass
-      POSTGRES_DB: saga_db
-    ports:
-      - "5432:5432"  
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    restart: unless-stopped
+      image: postgres:15
+      container_name: saga-db-container
+      environment:
+        POSTGRES_USER: saga_user
+        POSTGRES_PASSWORD: saga_pass
+        POSTGRES_DB: saga_db
+      ports:
+        - "5432:5432"  
+      volumes:
+        - db_data:/var/lib/postgresql/data
+      restart: unless-stopped
+      networks:
+        - saga-network
 
 volumes:
   db_data:
-
-  service-ragsv:
-      build:
-        context: .
-        dockerfile: services/ragsv/Dockerfile 
-      container_name: saga-service-ragsv
-      environment:
-        - GOOGLE_API_KEY=${GOOGLE_API_KEY} 
-        - BUS_HOST=saga-bus                 
-        - BUS_PORT=5000                     
-        - CHROMA_HOST=saga-chromadb
-      depends_on:
-        - saga-bus
-        - saga-chromadb
-      networks:
-        - saga-network
-      restart: unless-stopped
 
 networks:
   saga-network:
