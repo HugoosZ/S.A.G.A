@@ -6,7 +6,11 @@ import email
 from email.header import decode_header
 import re
 from shared.soa_lib import connect_to_bus, send_message, receive_message
+from prometheus_client import start_http_server, Histogram, Counter
 
+# Métricas de Monitoreo
+EMAIL_PROCESSING_LATENCY = Histogram('email_processing_latency_seconds', 'Time spent processing and sending an email')
+EMAIL_COUNT = Counter('email_processed_total', 'Total number of emails processed')
 
 # CONFIGURACIÓN
 IMAP_HOST = "imap.gmail.com"
@@ -128,6 +132,10 @@ def fetch_unseen_emails():
 
 
 def run():
+    # Iniciar servidor de métricas de Prometheus en el puerto 8002
+    start_http_server(8002)
+    logger.info("Servidor de métricas Prometheus iniciado en el puerto 8002")
+
     while True:
         sock = None
         try:
@@ -138,11 +146,13 @@ def run():
                 logger.info("Conectado al bus para enviar lote de correos")
 
                 for email_data in emails:
-                    logger.info(f"Enviando correo: {email_data['subject']}")
+                    with EMAIL_PROCESSING_LATENCY.time():
+                        logger.info(f"Enviando correo: {email_data['subject']}")
 
                     payload_json = json.dumps(email_data, ensure_ascii=True)
                     
                     send_message(sock, SERVICE_TARGET, payload_json)
+                    EMAIL_COUNT.inc()
                     
                     response_bytes = receive_message(sock)
 
