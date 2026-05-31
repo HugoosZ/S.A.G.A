@@ -227,3 +227,35 @@ Ejecución de test:
 docker exec -it saga-service-docum /bin/sh
 python -m services.docum.test_docum_client
 ```
+
+## Monitoreo y Gestión de Riesgos
+
+El proyecto incluye un stack completo de observabilidad para medir latencias críticas y monitorear el desempeño de la integración entre el procesamiento de correos y el motor RAG.
+
+### Stack Tecnológico
+- **Prometheus:** Recolecta métricas expuestas por los contenedores y clientes (Ej: Latencia del LLM en segundos, cantidad de correos despachados).
+- **Grafana:** Herramienta de visualización en la que puedes crear paneles de control y configurar alertas automáticas si los tiempos de respuesta se degradan.
+
+### ¿Cómo funciona?
+1. Los servicios instrumentados (`saga-service-ragsv` y el cliente `monitor_agente`) utilizan la librería `prometheus-client` para medir tiempos (`Histogram`) y contadores (`Counter`).
+2. Exponen un servidor HTTP interno en puertos específicos (ej: `8001` y `8002`).
+3. El contenedor de **Prometheus** sondea (scrape) continuamente estos puertos según lo definido en `prometheus/prometheus.yml`.
+4. **Grafana** se conecta a Prometheus como origen de datos (Data Source) para visualizar las gráficas.
+
+### ¿Cómo ejecutarlo y probarlo?
+1. Levantar la infraestructura con Docker Compose:
+   ```bash
+   docker-compose up -d --build
+   ```
+2. ejecutar también el agente de correos localmente :
+   ```bash
+   cd clients/monitor_agente
+   python main.py
+   ```
+3. Accede al panel de **Grafana** desde tu navegador:
+   - **URL:** [http://localhost:3000](http://localhost:3000)
+   - **Usuario / Contraseña por defecto:** `admin` / `admin`
+4. En Grafana, ve a *Connections > Data Sources*, agrega **Prometheus** y configura su URL interna: `http://prometheus:9090`.
+5. Ve a *Explore* en Grafana o crea un Dashboard nuevo usando las métricas:
+   - `llm_processing_latency_seconds_sum` (o `_count`, `_bucket`)
+   - `email_processing_latency_seconds_sum`

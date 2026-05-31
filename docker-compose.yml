@@ -64,9 +64,6 @@ services:
       - db_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-volumes:
-  db_data:
-
   service-ragsv:
       build:
         context: .
@@ -80,9 +77,40 @@ volumes:
       depends_on:
         - saga-bus
         - saga-chromadb
+      ports:
+        - "8001:8001" # Exponer métricas de Prometheus
       networks:
         - saga-network
       restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: saga-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - saga-network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: saga-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    networks:
+      - saga-network
+    restart: unless-stopped
+
+volumes:
+  db_data:
 
 networks:
   saga-network:
