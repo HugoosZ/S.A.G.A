@@ -86,7 +86,7 @@ services:
     environment:
       - ADMIN_PASSWORD=saga_admin
     volumes:
-      - ./data/fuseki_data:/fuseki/databases
+      - ./data/fuseki_data:/fuseki-base/databases
     networks:
       - saga-network
     restart: unless-stopped

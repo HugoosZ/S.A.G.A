@@ -8,3 +8,4 @@ build/
 *.spec
 /data/chroma_data/
 /chroma_data/
+data/fuseki_data/
