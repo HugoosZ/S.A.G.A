@@ -377,7 +377,6 @@ class RelationExtractor:
                 if store:
                     store.add_triples(result.triples)
             
-            import time
             time.sleep(3)  # Pausa para evitar rate limits o bloqueos silenciosos
             processed += 1
         
