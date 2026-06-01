@@ -42,12 +42,17 @@ services:
         - BUS_HOST=saga-bus                 # Name of the bus service as defined in this docker-compose (saga-bus)
         - BUS_PORT=5000                     # Native port of the bus inside the docker network
         - CHROMA_HOST=saga-chromadb
+        - GRAPH_STORE_TYPE=fuseki
+        - FUSEKI_URL=http://saga-fuseki:3030
+        - FUSEKI_DATASET=ragent
+        - GRAPH_EXTRACT_ON_INGEST=true
       volumes:
         # shared local dir to bring PDFs from the PC to the container
         - ./resources:/app/files
       depends_on:
         - saga-bus
         - saga-chromadb
+        - saga-fuseki 
       networks:
         - saga-network
       restart: unless-stopped
@@ -59,7 +64,7 @@ services:
       POSTGRES_PASSWORD: saga_pass
       POSTGRES_DB: saga_db
     ports:
-      - "5432:5432"  
+      - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -74,14 +79,28 @@ services:
         - BUS_HOST=saga-bus                 
         - BUS_PORT=5000                     
         - CHROMA_HOST=saga-chromadb
+        - GRAPH_STORE_TYPE=fuseki
+        - FUSEKI_URL=http://saga-fuseki:3030
+        - FUSEKI_DATASET=ragent
       depends_on:
         - saga-bus
         - saga-chromadb
+        - saga-fuseki 
       ports:
         - "8001:8001" # Exponer métricas de Prometheus
       networks:
         - saga-network
       restart: unless-stopped
+
+  saga-fuseki:
+    image: secoresearch/fuseki:latest
+    container_name: saga-fuseki
+    ports:
+      - "3030:3030"
+    environment:
+      - ADMIN_PASSWORD=saga_admin
+    volumes:
+      - ./data/fuseki_data:/fuseki/databases
 
   prometheus:
     image: prom/prometheus:latest
