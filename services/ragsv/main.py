@@ -11,7 +11,12 @@ if ROOT_DIR not in sys.path:
 from shared.service_base import start_service
 from packages.rag_core.rag.qa import answer_with_rag
 from packages.rag_core.utils.logger import logger
+from prometheus_client import start_http_server, Histogram
 
+# Métrica para medir el tiempo de procesamiento del RAG / LLM
+LLM_LATENCY = Histogram('llm_processing_latency_seconds', 'Time spent processing LLM requests in RAGSV')
+
+@LLM_LATENCY.time()
 def process_request(payload: dict) -> dict:
     """
     Procesa las peticiones entrantes del BUS.
@@ -55,6 +60,10 @@ def process_request(payload: dict) -> dict:
         }
 
 if __name__ == "__main__":
+    # Iniciar servidor de métricas de Prometheus en el puerto 8001
+    start_http_server(8001)
+    logger.info("Servidor de métricas Prometheus iniciado en el puerto 8001")
+    
     logger.info("Iniciando servicio de Generación Aumentada (RAGSV)...")
     # Registra el servicio en el BUS con la taxonomía oficial de 5 letras
     start_service("ragsv", process_request)
