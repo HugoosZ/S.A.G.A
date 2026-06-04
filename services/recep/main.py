@@ -49,6 +49,13 @@ def process_email(data: dict) -> dict:
 
         # Extraer el último mensaje 
         latest_msg = messages[-1] if messages else {}
+        
+        # --- NUEVA CORRECCIÓN: Asegurar que el timestamp sea un string ---
+        timestamp_val = latest_msg.get("timestamp")
+        if timestamp_val is not None and not isinstance(timestamp_val, str):
+            # Convierte el objeto datetime a una cadena ISO (ej: 2026-06-03T20:25:42)
+            timestamp_val = timestamp_val.isoformat() 
+        # -----------------------------------------------------------------
 
         logger.info(
             "Contrato RAG generado exitosamente para el hilo: %s", 
@@ -69,7 +76,7 @@ def process_email(data: dict) -> dict:
                 "latest_message": {
                     "sender": latest_msg.get("sender"),
                     "body": latest_msg.get("body"),
-                    "timestamp": latest_msg.get("timestamp")
+                    "timestamp": timestamp_val # <-- Usamos la variable serializada
                 },
                 "full_history_text": full_history_text
             }

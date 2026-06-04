@@ -1,12 +1,21 @@
 import psycopg2
+import os
 
+# Se modifico por error de conexión en la red
 def get_connection():
+    # Se capturan las variables inyectadas por Docker
+    db_host = os.getenv("POSTGRES_HOST", "localhost")
+    db_name = os.getenv("POSTGRES_DB", "saga_db")
+    db_user = os.getenv("POSTGRES_USER", "saga_user")
+    db_pass = os.getenv("POSTGRES_PASSWORD", "saga_pass")
+    db_port = os.getenv("POSTGRES_PORT", "5432")
+
     return psycopg2.connect(
-        dbname="saga_db",
-        user="saga_user",
-        password="saga_pass",
-        host="localhost",
-        port="5432"
+        host=db_host,
+        database=db_name,
+        user=db_user,
+        password=db_pass,
+        port=db_port
     )
 
 def init_db():

@@ -32,30 +32,9 @@ services:
       - saga-network
     restart: unless-stopped
 
-  service-docum:
-      build:
-        context: .                          # root of monorepo have the context
-        dockerfile: services/docum/Dockerfile 
-      container_name: saga-service-docum
-      environment:
-        - GOOGLE_API_KEY=${GOOGLE_API_KEY} 
-        - BUS_HOST=saga-bus                 # Name of the bus service as defined in this docker-compose (saga-bus)
-        - BUS_PORT=5000                     # Native port of the bus inside the docker network
-        - CHROMA_HOST=saga-chromadb
-        - GRAPH_STORE_TYPE=fuseki
-        - FUSEKI_URL=http://saga-fuseki:3030
-        - FUSEKI_DATASET=ragent
-        - GRAPH_EXTRACT_ON_INGEST=true
-      volumes:
-        # shared local dir to bring PDFs from the PC to the container
-        - ./resources:/app/files
-      depends_on:
-        - saga-bus
-        - saga-chromadb
-        - saga-fuseki 
-      networks:
-        - saga-network
-      restart: unless-stopped
+  # ==========================================
+  # RELATIONAL DATABASE
+  # ==========================================
   db:
     image: postgres:15
     container_name: saga-db-container
@@ -68,30 +47,102 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - saga-network  # Corregido: Se vuelve a incluir en la red para comunicarse con service-recep
+
+  # ==========================================
+  # INGESTION & EMAIL SERVICES (Reintegrados del Código 1)
+  # ==========================================
+  service-recep:
+    build:
+      context: .
+      dockerfile: services/recep/Dockerfile 
+    container_name: saga-service-recep
+    environment:
+      - BUS_HOST=saga-bus
+      - BUS_PORT=5000
+      - POSTGRES_USER=saga_user
+      - POSTGRES_PASSWORD=saga_pass
+      - POSTGRES_DB=saga_db
+      - POSTGRES_HOST=db
+    depends_on:
+      - saga-bus
+      - db
+    networks:
+      - saga-network
+    restart: unless-stopped
+
+  monitor-agente:
+    build:
+      context: .
+      dockerfile: clients/monitor_agente/Dockerfile 
+    container_name: saga-monitor-agente
+    environment:
+      - BUS_HOST=saga-bus
+      - BUS_PORT=5000
+      - EMAIL_IMAP_SERVER=${EMAIL_IMAP_SERVER}
+      - EMAIL_USUARIO=${EMAIL_USUARIO}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+    depends_on:
+      - saga-bus
+    networks:
+      - saga-network
+    restart: always
+
+  # ==========================================
+  # CORE SERVICES (Con soporte Fuseki de Código 2)
+  # ==========================================
+  service-docum:
+    build:
+      context: .                          # root of monorepo have the context
+      dockerfile: services/docum/Dockerfile 
+    container_name: saga-service-docum
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY} 
+      - BUS_HOST=saga-bus                 
+      - BUS_PORT=5000                     
+      - CHROMA_HOST=saga-chromadb
+      - GRAPH_STORE_TYPE=fuseki
+      - FUSEKI_URL=http://saga-fuseki:3030
+      - FUSEKI_DATASET=ragent
+      - GRAPH_EXTRACT_ON_INGEST=true
+    volumes:
+      # shared local dir to bring PDFs from the PC to the container
+      - ./resources:/app/files
+    depends_on:
+      - saga-bus
+      - saga-chromadb
+      - saga-fuseki 
+    networks:
+      - saga-network
+    restart: unless-stopped
 
   service-ragsv:
-      build:
-        context: .
-        dockerfile: services/ragsv/Dockerfile 
-      container_name: saga-service-ragsv
-      environment:
-        - GOOGLE_API_KEY=${GOOGLE_API_KEY} 
-        - BUS_HOST=saga-bus                 
-        - BUS_PORT=5000                     
-        - CHROMA_HOST=saga-chromadb
-        - GRAPH_STORE_TYPE=fuseki
-        - FUSEKI_URL=http://saga-fuseki:3030
-        - FUSEKI_DATASET=ragent
-      depends_on:
-        - saga-bus
-        - saga-chromadb
-        - saga-fuseki 
-      ports:
-        - "8001:8001" # Exponer métricas de Prometheus
-      networks:
-        - saga-network
-      restart: unless-stopped
+    build:
+      context: .
+      dockerfile: services/ragsv/Dockerfile 
+    container_name: saga-service-ragsv
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY} 
+      - BUS_HOST=saga-bus                 
+      - BUS_PORT=5000                     
+      - CHROMA_HOST=saga-chromadb
+      - GRAPH_STORE_TYPE=fuseki
+      - FUSEKI_URL=http://saga-fuseki:3030
+      - FUSEKI_DATASET=ragent
+    depends_on:
+      - saga-bus
+      - saga-chromadb
+      - saga-fuseki 
+    ports:
+      - "8001:8001" # Exponer métricas de Prometheus
+    networks:
+      - saga-network
+    restart: unless-stopped
 
+  # ==========================================
+  # GRAPH DATABASE (De Código 2)
+  # ==========================================
   saga-fuseki:
     image: secoresearch/fuseki:latest
     container_name: saga-fuseki
@@ -101,7 +152,12 @@ services:
       - ADMIN_PASSWORD=saga_admin
     volumes:
       - ./data/fuseki_data:/fuseki/databases
+    networks:
+      - saga-network
 
+  # ==========================================
+  # OBSERVABILITY STACK (De Código 2)
+  # ==========================================
   prometheus:
     image: prom/prometheus:latest
     container_name: saga-prometheus
