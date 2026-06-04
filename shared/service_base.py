@@ -57,7 +57,7 @@ def start_service(service_name, process_function):
 
             # devuelve la respuesta al Bus convirtiendo el diccionario a un string JSON
             # proceso inverso al de arriba
-            response_str = json.dumps(response_data)
+            response_str = json.dumps(response_data, ensure_ascii=True)
             send_message(sock, service_name, response_str)
 
     except Exception as e:

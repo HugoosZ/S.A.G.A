@@ -18,7 +18,10 @@ requests>=2.31.0
 # Logging & environment
 python-dotenv>=1.0.0
 
-#BUS
+# BUS
 SALib>=1.4.0
+
+# Observabilidad y Monitoreo
+prometheus-client>=0.19.0
 
 pycryptodome
