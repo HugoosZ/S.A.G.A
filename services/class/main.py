@@ -66,7 +66,7 @@ def process_classification(payload: dict) -> dict:
             receive_message(sock)
 
             # Aquí se delegaría de vuelta a RECEP para enviar el correo (Endpoint POST /emails/send del informe)
-            # send_message(sock, "recep", json.dumps({"action": "enviar_correo", "to": correo_alumno, "body": respuesta_ia}))
+            send_message(sock, "recep", json.dumps({"action": "enviar_correo", "to": correo_alumno, "body": respuesta_ia}))
             logger.info(f"Se ha ordenado el envío de la respuesta a {correo_alumno}.")
 
         sock.close()

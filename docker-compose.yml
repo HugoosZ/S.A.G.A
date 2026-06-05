@@ -65,6 +65,8 @@ services:
       - POSTGRES_PASSWORD=saga_pass
       - POSTGRES_DB=saga_db
       - POSTGRES_HOST=db
+      - EMAIL_USUARIO=${EMAIL_USUARIO}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
     depends_on:
       - saga-bus
       - db
@@ -104,7 +106,7 @@ services:
       - CHROMA_HOST=saga-chromadb
       - GRAPH_STORE_TYPE=fuseki
       - FUSEKI_URL=http://saga-fuseki:3030
-      - FUSEKI_DATASET=ragent
+      - FUSEKI_DATASET=ds
       - GRAPH_EXTRACT_ON_INGEST=true
     volumes:
       # shared local dir to bring PDFs from the PC to the container
@@ -143,7 +145,7 @@ services:
       - CHROMA_HOST=saga-chromadb
       - GRAPH_STORE_TYPE=fuseki
       - FUSEKI_URL=http://saga-fuseki:3030
-      - FUSEKI_DATASET=ragent
+      - FUSEKI_DATASET=ds
     depends_on:
       - saga-bus
       - saga-chromadb

@@ -8,14 +8,7 @@ import re
 from shared.soa_lib import connect_to_bus, send_message, receive_message
 import os #para leer variables de entorno   
 
-""""
-# CONFIGURACIÓN
-IMAP_HOST = "imap.gmail.com"
-EMAIL_ACCOUNT = ""
-EMAIL_PASSWORD = ""  # IMPORTANTE: Usar contraseña de aplicación, no la contraseña normal del correo
-BUS_HOST = "localhost"
-BUS_PORT = 5000
-"""""
+
 IMAP_HOST = os.getenv("EMAIL_IMAP_SERVER", "imap.gmail.com")
 EMAIL_ACCOUNT = os.getenv("EMAIL_USUARIO")
 EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")

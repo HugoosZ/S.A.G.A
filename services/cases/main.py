@@ -3,6 +3,10 @@ import json
 from shared.service_base import start_service
 import repository as repo
 
+# Librerias para enviar los mensajes al ragsv
+import os
+from shared.soa_lib import connect_to_bus, send_message, receive_message
+
 SERVICE_NAME = "casos"
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(SERVICE_NAME)
@@ -42,6 +46,50 @@ def process_case_request(payload: dict) -> dict:
     except Exception as e:
         logger.error(f"Error al procesar la solicitud: {e}")
         return {"status": "error", "message": "Error interno del servicio"}
+
+
+
+# Función para consultar al RAGSV desde este servicio de casos, si es necesario 
+def consultar_ia_ragsv(pregunta_texto: str) -> dict:
+    """
+    Actúa como cliente del bus para enviar una consulta al servicio RAGSV
+    y esperar su respuesta cognitiva.
+    """
+    sock = None
+    try:
+        # 1. Leer credenciales del bus desde el entorno
+        bus_host = os.getenv("BUS_HOST", "saga-bus")
+        bus_port = int(os.getenv("BUS_PORT", 5000))
+        
+        # 2. Conectar al bus
+        sock = connect_to_bus(bus_host, bus_port)
+        if not sock:
+            return {"status": "error", "message": "No se pudo conectar al bus"}
+
+        # 3. Armar el contrato exacto que exige ragsv.py
+        payload_dict = {
+            "question": pregunta_texto
+        }
+        
+        # 4. Enviar al servicio destino "ragsv"
+        send_message(sock, "ragsv", json.dumps(payload_dict))
+        
+        # 5. Esperar la respuesta
+        response_bytes = receive_message(sock)
+        
+        if response_bytes:
+            # El bus devuelve 5 bytes de servicio + 2 bytes de status + payload
+            payload_raw = response_bytes[7:].decode("utf-8", errors="ignore")
+            return json.loads(payload_raw)
+        else:
+            return {"status": "error", "message": "Timeout esperando al RAGSV"}
+
+    except Exception as e:
+        logger.error(f"Error enrutando hacia ragsv: {e}")
+        return {"status": "error", "message": str(e)}
+    finally:
+        if sock:
+            sock.close()
 
 def run():
     logger.info(f"Iniciando servicio {SERVICE_NAME}...")

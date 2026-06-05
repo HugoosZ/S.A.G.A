@@ -11,6 +11,8 @@ from utils import (
     asignar_hilo,
     is_valid_email_content
 )
+import smtplib
+from email.mime.text import MIMEText
 import os
 from shared.soa_lib import connect_to_bus, send_message
         
@@ -100,7 +102,48 @@ def process_email(data: dict) -> dict:
             "status": "error",
             "message": str(e)
         }
+def enviar_respuesta_smtp(data: dict) -> dict:
+    """Se conecta al servidor SMTP de Gmail y despacha la respuesta de la IA"""
+    destinatario = data.get("to")
+    cuerpo_mensaje = data.get("body")
+    
+    remitente = os.getenv("EMAIL_USUARIO")
+    password = os.getenv("EMAIL_PASSWORD")
+    
+    if not remitente or not password:
+        logger.error("Credenciales SMTP no configuradas en el entorno.")
+        return {"status": "error", "message": "Credenciales SMTP faltantes"}
 
+    try:
+        msg = MIMEText(cuerpo_mensaje)
+        msg['Subject'] = "Respuesta Automática - Secretaría de Estudios FIC"
+        msg['From'] = remitente
+        msg['To'] = destinatario
+
+        # Conexión al servidor SMTP de Google
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(remitente, password)
+        server.send_message(msg)
+        server.quit()
+        
+        logger.info(f"Correo enviado exitosamente a {destinatario}")
+        return {"status": "success", "message": "Correo despachado"}
+    except Exception as e:
+        logger.error(f"Fallo al enviar correo SMTP: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+def process_email(data: dict) -> dict:
+    """Procesa peticiones del bus: Ingestar correos nuevos o Enviar respuestas"""
+    
+    # 1. INTERCEPTAR ORDEN DE ENVÍO
+    if data.get("action") == "enviar_correo":
+        return enviar_respuesta_smtp(data)
+        
+    # 2. FLUJO NORMAL DE LECTURA (Lo que ya tenía)
+    try:
+        if not validate_email_data(data):
 
 def run():
     init_db()  
