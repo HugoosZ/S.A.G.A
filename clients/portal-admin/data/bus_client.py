@@ -18,7 +18,9 @@ from pathlib import Path
 # Por defecto el portal corre en el host, así que apunta a los puertos publicados
 # por docker-compose. Variables de entorno permiten redirigir en producción.
 BUS_HOST = os.getenv("SAGA_BUS_HOST", "localhost")
-BUS_PORT = int(os.getenv("SAGA_BUS_PORT", "5001"))
+# docker-compose publica el BUS en 15001 (puerto interno 5000). Si en tu setup
+# el mapeo es otro, exporta SAGA_BUS_PORT antes de lanzar el portal.
+BUS_PORT = int(os.getenv("SAGA_BUS_PORT", "15001"))
 INGEST_TIMEOUT_S = float(os.getenv("SAGA_INGEST_TIMEOUT_S", "600"))
 
 # Ubicación del directorio `resources/` del monorepo, que está bind-mounted como

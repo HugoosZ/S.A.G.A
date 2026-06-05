@@ -2,10 +2,12 @@
 Cliente HTTP de Prometheus para el portal administrativo.
 
 Las métricas que consume vienen de:
-- monitor_agente (host:8002): email_processed_total, email_processing_latency_seconds_*
-- saga-service-ragsv (puerto 8001):   llm_processing_latency_seconds_*
+- saga-service-recep (puerto 8002): recep_processing_latency_seconds_*
+- saga-service-ragsv (puerto 8001): llm_processing_latency_seconds_*,
+                                    e2e_resolution_latency_seconds_*,
+                                    integration_bus_latency_seconds_*
 
-Ambos jobs están definidos en prometheus/prometheus.yml.
+Los jobs de scraping están definidos en prometheus/prometheus.yml.
 
 Cuando Prometheus no está disponible o la métrica aún no existe, las funciones
 devuelven valores neutros para que el dashboard pueda renderizar un estado
@@ -99,14 +101,23 @@ def is_prometheus_reachable() -> bool:
 def get_resumen() -> dict[str, Any]:
     """
     KPIs para las tarjetas superiores del dashboard.
-    Valores en cero cuando Prometheus no responde o la métrica no existe aún.
+
+    - total = correos recibidos por recep (recep_processing_latency_seconds_count)
+    - respondidos_auto = consultas atendidas por ragsv (llm_processing_latency_seconds_count)
+    - tiempo_promedio_s = latencia end-to-end (e2e_resolution_latency_seconds), o sólo
+      la del LLM si la métrica E2E aún no tiene observaciones.
     """
-    total_7d = _query("sum(increase(email_processed_total[7d]))") or 0.0
+    total_7d = _query("sum(increase(recep_processing_latency_seconds_count[7d]))") or 0.0
     auto_7d = _query("sum(increase(llm_processing_latency_seconds_count[7d]))") or 0.0
     avg_latency = _query(
-        "sum(rate(llm_processing_latency_seconds_sum[7d])) "
-        "/ sum(rate(llm_processing_latency_seconds_count[7d]))"
+        "sum(rate(e2e_resolution_latency_seconds_sum[7d])) "
+        "/ sum(rate(e2e_resolution_latency_seconds_count[7d]))"
     )
+    if avg_latency is None:
+        avg_latency = _query(
+            "sum(rate(llm_processing_latency_seconds_sum[7d])) "
+            "/ sum(rate(llm_processing_latency_seconds_count[7d]))"
+        )
 
     total_int = int(round(total_7d))
     auto_int = int(round(auto_7d))
@@ -141,7 +152,7 @@ def get_serie_historica(dias: int = 30) -> list[dict[str, Any]]:
         start_ts, end_ts, step,
     )
     total_series = _query_range(
-        "sum(increase(email_processed_total[1d]))",
+        "sum(increase(recep_processing_latency_seconds_count[1d]))",
         start_ts, end_ts, step,
     )
 
