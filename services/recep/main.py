@@ -2,12 +2,20 @@
 
 import json
 import logging
+import os
+import sys
 import time
+
+# El contenedor arranca con `python -m services.recep.main`, cuyo cwd es /app.
+# Ponemos también este directorio en sys.path para que los imports planos
+# `repository` y `utils` sigan funcionando dentro y fuera del contenedor.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from prometheus_client import start_http_server, Histogram
 
 from shared.mail_db import init_db
 from shared.service_base import start_service
-from repository import save_email, build_conversation 
+from repository import save_email, build_conversation
 from utils import (
     validate_email_data,
     normalizar_email_data,

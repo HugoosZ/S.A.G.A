@@ -2,13 +2,27 @@ import os
 import psycopg2
 
 
+def _env(*names: str, default: str) -> str:
+    """Devuelve el primer env var no vacío de la lista, o `default`."""
+    for n in names:
+        value = os.getenv(n)
+        if value:
+            return value
+    return default
+
+
 def get_connection():
+    """
+    Acepta dos convenciones para los datos de conexión:
+    - POSTGRES_* (usado por docker-compose, alineado con la imagen postgres).
+    - SAGA_DB_*  (alias para entornos que no quieren chocar con vars de otros servicios).
+    """
     return psycopg2.connect(
-        dbname=os.getenv("SAGA_DB_NAME", "saga_db"),
-        user=os.getenv("SAGA_DB_USER", "saga_user"),
-        password=os.getenv("SAGA_DB_PASSWORD", "saga_pass"),
-        host=os.getenv("SAGA_DB_HOST", "localhost"),
-        port=os.getenv("SAGA_DB_PORT", "5432"),
+        dbname=_env("POSTGRES_DB", "SAGA_DB_NAME", default="saga_db"),
+        user=_env("POSTGRES_USER", "SAGA_DB_USER", default="saga_user"),
+        password=_env("POSTGRES_PASSWORD", "SAGA_DB_PASSWORD", default="saga_pass"),
+        host=_env("POSTGRES_HOST", "SAGA_DB_HOST", default="localhost"),
+        port=_env("POSTGRES_PORT", "SAGA_DB_PORT", default="5432"),
     )
 
 
