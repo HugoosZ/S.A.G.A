@@ -67,6 +67,8 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+    networks:
+      - saga-network
     restart: unless-stopped
 
   service-ragsv:
@@ -101,6 +103,9 @@ services:
       - ADMIN_PASSWORD=saga_admin
     volumes:
       - ./data/fuseki_data:/fuseki/databases
+    networks:
+      - saga-network
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:latest
