@@ -1,4 +1,4 @@
-PORTAL = client/portal-admin
+PORTAL = clients/portal-admin
 VENV   = $(PORTAL)/.venv
 PYTHON = $(VENV)/bin/python
 PIP    = $(VENV)/bin/pip
