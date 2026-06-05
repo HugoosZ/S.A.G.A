@@ -22,20 +22,21 @@
 
 ## Arquitectura Interna
 
-```
+```text
 ┌─────────────┐     JSON/BUS      ┌────────────────┐
 │  Cliente /   │ ──────────────▶  │   main.py      │
 │  Otro Svc    │                  │  (ragsv)       │
 └─────────────┘                   └───────┬────────┘
-                                          │
+                                          │ (engine=standard|react)
+                       ┌──────────────────┴──────────────────┐
+                       ▼                                     ▼
+             ┌─────────────────┐                   ┌─────────────────┐
+             │    qa.py         │                   │    ReAct.py      │
+             │ answer_with_rag()│                   │ run_react_agent()│
+             └────────┬────────┘                   └────────┬────────┘
+                      │                                     │
+                      └───────────────────┬─────────────────┘
                                           ▼
-                                ┌─────────────────┐
-                                │    qa.py         │
-                                │ answer_with_rag()│
-                                └────────┬────────┘
-                                         │
-                          ┌──────────────┼──────────────┐
-                          ▼              ▼              ▼
                    ┌────────────┐ ┌────────────┐ ┌────────────┐
                    │retriever.py│ │  llm.py    │ │ (hybrid)   │
                    │ ChromaDB   │ │  Agent()   │ │ KG (opt.)  │
@@ -45,7 +46,7 @@
 **Flujo de una petición:**
 
 1. El BUS entrega el payload JSON ya parseado como `dict` a `process_request()` en `main.py`.
-2. `main.py` extrae la pregunta y llama a `answer_with_rag()` del módulo `qa.py`.
+2. `main.py` lee el parámetro `engine` y enruta la pregunta al RAG Estándar (`qa.py`) o al Agente Autónomo (`ReAct.py`).
 3. `qa.py` utiliza `retriever.py` para buscar los fragmentos más relevantes en ChromaDB (con reranking opcional).
 4. Se construye un prompt con el contexto recuperado y se envía al LLM vía `llm.py` (`Agent.generate()`).
 5. La respuesta del LLM se empaqueta en un `dict` y se retorna al BUS.
@@ -54,13 +55,14 @@
 
 ## Entrada (Request)
 
-El payload JSON que debe enviarse al servicio `ragsv` a través del BUS:
+El payload JSON que debe enviarse al servicio `ragsv` a través del BUS desde cualquier otro microservicio:
 
 ```json
 {
   "question": "¿De qué trata el Proyecto de Arquitectura de Software?",
   "k": 4,
-  "collection_name": "study_collection"
+  "collection_name": "study_collection",
+  "engine": "standard"
 }
 ```
 
@@ -69,6 +71,7 @@ El payload JSON que debe enviarse al servicio `ragsv` a través del BUS:
 | `question`        | `str`  | ✅          | La pregunta en lenguaje natural.                                     |
 | `k`               | `int`  | ❌          | Número de fragmentos a recuperar (default: `4`).                     |
 | `collection_name` | `str`  | ❌          | Colección de ChromaDB a consultar (default: `study_collection`).     |
+| `engine`          | `str`  | ❌          | Motor cognitivo a usar: `"standard"` o `"react"` (default: `"standard"`). |
 
 ---
 
@@ -148,6 +151,28 @@ El LLM puede devolver múltiples bloques. Cada bloque tiene un campo `type` que 
   {
     "type": "text",
     "text": "El proyecto trata sobre el diseño arquitectónico del **Sistema de Apoyo y Gestión Académica (SAGA)**.\n\nFUENTES\n* Proyecto_Arquitectura_de_Software.pdf | chunk=17\n* Proyecto_Arquitectura_de_Software.pdf | chunk=5"
+  }
+]
+```
+
+---
+
+## Personalidad del RAG y Reglas de Derivación (Secretaría Virtual)
+
+El asistente virtual está configurado a través del `SYSTEM_INSTRUCTIONS` (en `qa.py`) para actuar como un **primer filtro de la Secretaría de Estudios de la UDP**. Se rige por las siguientes reglas de respuesta:
+
+1. **Gestión Académica Resolutiva:** Responde de manera clara y basada en los documentos si hay información suficiente en el contexto recuperado.
+2. **Flag `DERIVAR A SECRETARIA`:** Si la consulta académica requiere intervención humana (ej. revisión de un caso particular, firmas, excepciones) o la información no está en los reglamentos, el LLM iniciará su texto exactamente con la frase `DERIVAR A SECRETARIA`. El cliente (frontend u otro servicio) puede buscar este "flag" al principio de la respuesta para derivar automáticamente el ticket o chat al personal humano.
+3. **Preguntas triviales sobre la UDP:** Si preguntan cosas cotidianas (ej. *¿dónde está la cafetería?* o *¿hay un Starbucks cerca de la facultad?*), el bot responderá de forma amable usando su conocimiento general sin derivar a secretaría.
+4. **Preguntas ajenas (fuera de contexto):** Si preguntan por el clima o le piden programar código, el bot rechazará la solicitud aclarando su propósito netamente universitario. Tampoco derivará estas dudas a secretaría.
+
+### Ejemplo de respuesta con derivación
+
+```json
+[
+  {
+    "type": "text",
+    "text": "DERIVAR A SECRETARIA\nEl estudiante está solicitando una excepción a la regla de asistencia del Artículo 4, lo cual requiere evaluación directa de la Dirección de Carrera."
   }
 ]
 ```
@@ -290,6 +315,16 @@ Módulo central de preguntas y respuestas. Contiene:
 | `build_hybrid_prompt()`     | Variante para búsqueda híbrida (grafo de conocimiento + vectores).             |
 | `extract_mentioned_files()` | Detecta si la pregunta menciona archivos específicos para priorizarlos.         |
 | `prioritize_docs_by_source()`| Reordena los documentos recuperados dando prioridad a archivos mencionados.   |
+
+### `packages/rag_core/rag/ReAct.py`
+
+Agente autónomo para consultas complejas:
+
+| Función / Tool              | Responsabilidad                                                                 |
+|-----------------------------|---------------------------------------------------------------------------------|
+| `create_react_agent()`      | Inicializa el agente Langchain `zero-shot-react-description` con herramientas.  |
+| `run_react_agent()`         | Ejecuta el razonamiento del agente, controlando el presupuesto de tokens.       |
+| `saga_search_tool()`        | Herramienta interna del agente para hacer búsquedas híbridas (Grafo+Vectores).  |
 
 ### `packages/rag_core/rag/retriever.py`
 
