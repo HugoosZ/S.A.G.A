@@ -11,6 +11,9 @@ from utils import (
     asignar_hilo,
     is_valid_email_content
 )
+import os
+from shared.soa_lib import connect_to_bus, send_message
+        
 
 SERVICE_NAME = "recep"
 logging.basicConfig(level=logging.INFO)
@@ -63,24 +66,33 @@ def process_email(data: dict) -> dict:
         )
 
         # Retornamos el contrato final optimizado para el Bus
-        return {
-            "status": "success",
-            "action": "process_rag",
+        contrato_final = {
             "metadata": {
                 "thread_id": hilo_id_real,
-                "total_messages": len(messages),
                 "last_sender": email_with_thread.get("sender"),
                 "subject_clean": email_with_thread.get("subject")
             },
             "rag_payload": {
                 "latest_message": {
-                    "sender": latest_msg.get("sender"),
                     "body": latest_msg.get("body"),
-                    "timestamp": timestamp_val # <-- Usamos la variable serializada
+                    "timestamp": timestamp_val
                 },
                 "full_history_text": full_history_text
             }
         }
+
+        # Conectar al bus y derivar al servicio class
+        
+        bus_host = os.getenv("BUS_HOST", "saga-bus")
+        bus_port = int(os.getenv("BUS_PORT", 5000))
+        sock_class = connect_to_bus(bus_host, bus_port)
+        
+        if sock_class:
+            send_message(sock_class, "class", json.dumps(contrato_final))
+            sock_class.close()
+            logger.info(f"Contrato RAG del hilo {hilo_id_real} derivado a CLASIFICACIÓN.")
+
+        return {"status": "success", "message": "Procesado y derivado a clasificación"}
 
     except Exception as e:
         logger.error("Error procesando correo en recep: %s", str(e))

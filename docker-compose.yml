@@ -117,6 +117,20 @@ services:
       - saga-network
     restart: unless-stopped
 
+  service-class:
+      build:
+        context: .
+        dockerfile: services/class/Dockerfile 
+      container_name: saga-service-class
+      environment:
+        - BUS_HOST=saga-bus
+        - BUS_PORT=5000
+      depends_on:
+        - saga-bus
+      networks:
+        - saga-network
+      restart: unless-stopped
+
   service-ragsv:
     build:
       context: .
