@@ -7,6 +7,6 @@ scrape_configs:
     static_configs:
       - targets: ['saga-service-ragsv:8001']
 
-  - job_name: 'saga-monitor-agente'
+  - job_name: 'saga-recep'
     static_configs:
-      - targets: ['host.docker.internal:8002']
+      - targets: ['saga-service-recep:8002']

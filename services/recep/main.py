@@ -2,6 +2,9 @@
 
 import json
 import logging
+import time
+from prometheus_client import start_http_server, Histogram
+
 from shared.mail_db import init_db
 from shared.service_base import start_service
 from repository import save_email, build_conversation 
@@ -16,9 +19,12 @@ SERVICE_NAME = "recep"
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(SERVICE_NAME)
 
+RECEP_LATENCY = Histogram('recep_processing_latency_seconds', 'Time spent processing incoming emails in RECEP')
 
+@RECEP_LATENCY.time()
 def process_email(data: dict) -> dict:
     """Procesa el correo entrante y genera el texto para el RAG"""
+    start_timestamp = time.time()
     try:
         if not validate_email_data(data):
             logger.warning("Datos de correo no válidos: %s", data)
@@ -63,7 +69,8 @@ def process_email(data: dict) -> dict:
                 "thread_id": hilo_id_real,
                 "total_messages": len(messages),
                 "last_sender": email_with_thread.get("sender"),
-                "subject_clean": email_with_thread.get("subject")
+                "subject_clean": email_with_thread.get("subject"),
+                "ingestion_timestamp": start_timestamp
             },
             "rag_payload": {
                 "latest_message": {
@@ -85,6 +92,8 @@ def process_email(data: dict) -> dict:
 
 def run():
     init_db()  
+    start_http_server(8002)
+    logger.info("Servidor de métricas Prometheus iniciado en el puerto 8002")
     start_service(SERVICE_NAME, process_email)
 
 
