@@ -26,7 +26,7 @@ class Agent:
     def generate(self, prompt: str, **kwargs) -> str:
         try:
             response = self._client.invoke(prompt)
-            logger.info(f"Raw Gemini response: {repr(response)}")
+            logger.debug(f"Raw Gemini response: {repr(response)}")
             if isinstance(response, str):
                 return response
             content = response.content
