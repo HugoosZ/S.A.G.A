@@ -47,16 +47,48 @@ def process_classification(payload: dict) -> dict:
             respuesta_ia = datos_ragsv.get("answer", "")
 
         # 3. Enrutamiento (La lógica de decisión)
-        if "REQUIERE_DERIVACION" in respuesta_ia:
-            logger.info(f"Clasificación: El hilo {hilo_id} requiere derivación humana.")
+        
+        # 3.0 Asegurar que la respuesta no sea nula y limpiar espacios
+        respuesta_ia = (respuesta_ia or "").strip()
+        respuesta_upper = respuesta_ia.upper()
+
+        # 3.1 Nueva condición: Derivar si hay palabras clave O si la IA está vacía
+        if not respuesta_ia or "REQUIERE_DERIVACION" in respuesta_upper or "DERIVAR A SECRETARIA" in respuesta_upper:
+            logger.info(f"Clasificación: El hilo {hilo_id} requiere derivación humana (o la IA no supo responder).")
+            
             req_casos = {
                 "action": "derivar",
                 "thread_id": hilo_id,
                 "correo_usuario": correo_alumno,
-                "motivo": "Trámite administrativo estricto detectado por LLM."
+                "motivo": f"Derivación por IA o falta de información. Respuesta obtenida: {respuesta_ia[:100]}"
             }
             send_message(sock, "casos", json.dumps(req_casos))
             receive_message(sock)
+
+            # Enviar correo de aviso al estudiante manteniendo el hilo
+            message_id = metadata.get("message_id")
+            asunto_limpio = metadata.get("subject_clean", "Consulta Secretaría de Estudios")
+            
+            mensaje_aviso = (
+                "Estimado/a estudiante,\n\n"
+                "Su consulta requiere la revisión de antecedentes académicos o un trámite administrativo específico, "
+                "por lo que ha sido derivada a la Secretaría de Estudios.\n\n"
+                "Un profesional de nuestro equipo analizará su caso particular y se pondrá en contacto "
+                "con usted a la brevedad respondiendo a este mismo correo.\n\n"
+                "Atentamente,\nSistema Automático S.A.G.A."
+            )
+
+            orden_envio_aviso = {
+                "action": "enviar_correo", 
+                "to": correo_alumno, 
+                "body": mensaje_aviso,
+                "subject": asunto_limpio,
+                "in_reply_to": message_id,
+                "references": hilo_id
+            }
+            send_message(sock, "recep", json.dumps(orden_envio_aviso))
+            logger.info(f"Se ha enviado el aviso de derivación a {correo_alumno}.")
+
         else:
             logger.info(f"Clasificación: Consulta resuelta. Enviando a correos y cerrando caso.")
             
@@ -65,10 +97,20 @@ def process_classification(payload: dict) -> dict:
             send_message(sock, "casos", json.dumps(req_casos))
             receive_message(sock)
 
-            # Aquí se delegaría de vuelta a RECEP para enviar el correo (Endpoint POST /emails/send del informe)
-            send_message(sock, "recep", json.dumps({"action": "enviar_correo", "to": correo_alumno, "body": respuesta_ia}))
+            message_id = metadata.get("message_id")
+            asunto_limpio = metadata.get("subject_clean", "Consulta Secretaría de Estudios")
+            
+            orden_envio = {
+                "action": "enviar_correo", 
+                "to": correo_alumno, 
+                "body": respuesta_ia,
+                "subject": asunto_limpio,
+                "in_reply_to": message_id,   # ID exacto del mensaje que estamos respondiendo
+                "references": hilo_id        # ID de la raíz del hilo
+            }
+            send_message(sock, "recep", json.dumps(orden_envio))
             logger.info(f"Se ha ordenado el envío de la respuesta a {correo_alumno}.")
-
+        
         sock.close()
         return {"status": "success", "message": "Clasificación y orquestación finalizada."}
 

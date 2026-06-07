@@ -92,8 +92,7 @@ def fetch_unseen_emails():
             client.login(EMAIL_ACCOUNT, EMAIL_PASSWORD)
             client.select_folder("INBOX")
 
-            filtro_asunto = "Consulta de prueba SAGA"
-            messages = client.search(["UNSEEN", "SUBJECT", filtro_asunto])
+            messages = client.search(["UNSEEN"])
             
             if not messages:
                 return []
