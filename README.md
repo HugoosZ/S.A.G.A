@@ -2,9 +2,9 @@
 
 ## Descripción del Sistema
 
-En la actualidad, las Secretarías de Estudios enfrentan picos de alta demanda de consultas durante los períodos críticos del semestre (inicio y fin), donde se concentra una gran cantidad de dudas académicas a través de correos electrónicos. La atención manual de preguntas recurrentes sobre trámites, plazos y reglamentos genera demoras, acumulación de mensajes y la posible pérdida de solicitudes prioritarias, lo que sobrecarga operativamente al personal y dificulta la atención de tareas de mayor complejidad.
+En la actualidad, las Secretarías de Estudios enfrentan picos de alta demanda de consultas durante los períodos críticos del semestre (inicio y fin). En estos momentos se concentra una gran cantidad de dudas académicas a través de correos electrónicos. La atención manual de preguntas recurrentes genera demoras, acumulación de mensajes y la posible pérdida de solicitudes prioritarias. En consecuencia, se sobrecarga operativamente al personal y se dificulta la atención de tareas de mayor complejidad.
 
-Para solucionar esta problemática, se desarrolló **S.A.G.A**, un sistema orientado a automatizar y centralizar la recepción, resolución y derivación de las inquietudes de los estudiantes. Esto permite que la secretaría de estudios acceda de forma rápida y organizada a la información, optimizando el tiempo y mejorando el servicio al alumnado.
+Para solucionar esta problemática, se propone **S.A.G.A**, un sistema orientado a automatizar y centralizar la recepción, resolución y derivación de las inquietudes de los estudiantes. Su implementación permite que la secretaría de estudios acceda de forma rápida y organizada a la información relevante. De esta manera, se optimiza el tiempo y se mejora el servicio entregado al alumnado.
 
 El proyecto está diseñado bajo una **arquitectura orientada a servicios (SOA)**. Cada componente (respuesta automatizada, clasificación, gestión de documentos, entre otros) es un servicio independiente e interoperable que se comunica mediante interfaces estandarizadas y un Enterprise Service Bus (ESB). Esto facilita la integración con sistemas preexistentes de la universidad y asegura una escalabilidad autónoma.
 
