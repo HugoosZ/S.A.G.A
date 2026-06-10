@@ -1,12 +1,15 @@
 """Vista de gestión de documentos institucionales."""
 
+import threading
 from pathlib import Path
 from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
 import theme as t
+from components.scroll_fix import TrackpadScrollMixin
 from data import db
+from data.bus_client import IngestionError
 
 
 # Mapa de colores por tipo de documento
@@ -20,11 +23,11 @@ TYPE_COLORS = {
 }
 
 
-class DocumentosView(ctk.CTkScrollableFrame):
+class DocumentosView(TrackpadScrollMixin, ctk.CTkScrollableFrame):
     """Vista de gestión de documentos: cargar, listar, activar, eliminar."""
 
     def __init__(self, parent):
-        self._scroll_accum = 0.0  # accumulator for sub-unit float deltas (Tcl 9 / macOS)
+        self._scroll_accum = 0.0
         super().__init__(
             parent,
             fg_color=t.BG,
@@ -42,16 +45,6 @@ class DocumentosView(ctk.CTkScrollableFrame):
         self._build_header()
         self._build_upload_card()
         self._build_filters_and_table()
-
-    def _mouse_wheel_all(self, event):
-        """Override CTkScrollableFrame's handler to support Tcl 9 fractional deltas on macOS."""
-        if not self.check_if_master_is_canvas(event.widget):
-            return
-        self._scroll_accum += event.delta
-        units = int(self._scroll_accum)
-        if units:
-            self._scroll_accum -= units
-            self._parent_canvas.yview_scroll(-units, "units")
 
     # ── Page header ─────────────────────────────────────────────────────
     def _build_header(self):
@@ -95,7 +88,7 @@ class DocumentosView(ctk.CTkScrollableFrame):
             text_color=t.INK, anchor="w",
         ).pack(anchor="w")
         ctk.CTkLabel(
-            head, text="Formatos aceptados: .pdf, .docx, .doc, .txt. El sistema extraerá el texto y lo indexará para el modelo de IA.",
+            head, text="Formato aceptado: .pdf. El sistema extrae el texto, genera chunks vectoriales en ChromaDB y tripletas RDF en el Knowledge Graph.",
             font=(t.FONT_FAMILY, t.SIZE_SMALL),
             text_color=t.MUTED, anchor="w",
             wraplength=900, justify="left",
@@ -132,7 +125,7 @@ class DocumentosView(ctk.CTkScrollableFrame):
         self.dz_text.pack()
 
         self.dz_hint = ctk.CTkLabel(
-            self.dropzone, text="Máximo 25 MB · PDF, DOCX, DOC, TXT",
+            self.dropzone, text="Máximo 25 MB · sólo PDF",
             font=(t.FONT_FAMILY, t.SIZE_SMALL),
             text_color=t.MUTED,
         )
@@ -203,12 +196,7 @@ class DocumentosView(ctk.CTkScrollableFrame):
     def _seleccionar_archivo(self):
         path = filedialog.askopenfilename(
             title="Seleccionar documento institucional",
-            filetypes=[
-                ("Documentos", "*.pdf *.docx *.doc *.txt"),
-                ("PDF", "*.pdf"),
-                ("Word", "*.docx *.doc"),
-                ("Texto", "*.txt"),
-            ],
+            filetypes=[("PDF", "*.pdf")],
         )
         if not path:
             return
@@ -233,36 +221,72 @@ class DocumentosView(ctk.CTkScrollableFrame):
             return
 
         ext = self.archivo_seleccionado.suffix.lower()
-        if ext not in {".pdf", ".docx", ".doc", ".txt"}:
+        if ext != ".pdf":
             messagebox.showerror(
                 "Formato no soportado",
-                f"La extensión {ext} no está permitida. Usa PDF, DOCX, DOC o TXT.",
+                "El motor RAG sólo indexa archivos PDF. "
+                f"Recibido: {ext or '(sin extensión)'}.",
             )
             return
 
-        tamano_kb = max(1, self.archivo_seleccionado.stat().st_size // 1024)
-        db.add_documento(
-            nombre=self.archivo_seleccionado.name,
-            tipo=self.tipo_seleccionado.get(),
-            tamano_kb=tamano_kb,
+        # Bloquear UI y disparar ingestión en background. El servicio docum
+        # extrae texto, embebe chunks en ChromaDB y, si GRAPH_EXTRACT_ON_INGEST
+        # está activo, escribe tripletas en el Knowledge Graph (Fuseki/RDFLib).
+        self.btn_upload.configure(
+            state="disabled",
+            text="  Procesando…",
+        )
+        self.dz_icon.configure(text="⏳", text_color=t.MUTED)
+        self.dz_hint.configure(
+            text="Enviando al servicio de ingestión…",
+            text_color=t.MUTED,
         )
 
+        archivo = self.archivo_seleccionado
+        tipo = self.tipo_seleccionado.get()
+
+        def _worker():
+            try:
+                doc = db.ingest_documento(archivo, tipo)
+                self.after(0, lambda: self._on_ingest_ok(doc))
+            except IngestionError as e:
+                self.after(0, lambda err=e: self._on_ingest_fail(str(err)))
+            except Exception as e:  # noqa: BLE001
+                self.after(0, lambda err=e: self._on_ingest_fail(f"Error inesperado: {err}"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_ingest_ok(self, doc: dict):
+        chunks = doc.get("chunks_indexados", 0)
         messagebox.showinfo(
-            "Documento cargado",
-            f"'{self.archivo_seleccionado.name}' fue cargado correctamente.\n"
-            f"El sistema extraerá el texto y lo indexará para el modelo de IA.",
+            "Documento indexado",
+            f"'{doc['nombre']}' fue ingresado al motor RAG.\n\n"
+            f"• Chunks vectoriales generados: {chunks}\n"
+            f"• Tripletas KG: extraídas si el servicio docum tiene "
+            f"GRAPH_EXTRACT_ON_INGEST=true.\n"
+            f"• Ya disponible para responder consultas vía ragsv.",
         )
+        self._reset_dropzone()
+        self._refresh_table()
 
-        # Reset
+    def _on_ingest_fail(self, message: str):
+        messagebox.showerror(
+            "No se pudo indexar el documento",
+            f"{message}\n\n"
+            "Verifica que docker-compose esté arriba (BUS + ChromaDB + servicio docum):\n"
+            "    docker-compose up -d",
+        )
+        self._reset_dropzone()
+
+    def _reset_dropzone(self):
         self.archivo_seleccionado = None
         self.dz_icon.configure(text="⬆", text_color=t.MUTED)
         self.dz_text.configure(text="Haz clic para seleccionar un archivo")
         self.dz_hint.configure(
-            text="Máximo 25 MB · PDF, DOCX, DOC, TXT",
+            text="Máximo 25 MB · sólo PDF",
             text_color=t.MUTED,
         )
-
-        self._refresh_table()
+        self.btn_upload.configure(state="normal", text="  Cargar documento")
 
     # ── Filtros + tabla ─────────────────────────────────────────────────
     def _build_filters_and_table(self):

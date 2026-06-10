@@ -18,6 +18,9 @@ requests>=2.31.0
 # Logging & environment
 python-dotenv>=1.0.0
 
+# Postgres (usado por shared/mail_db.py — recep, casos y portal-admin)
+psycopg2-binary>=2.9.9
+
 # BUS
 SALib>=1.4.0
 
