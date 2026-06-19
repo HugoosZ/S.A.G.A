@@ -1,10 +1,14 @@
 """Vista del dashboard: KPIs, gráficos y actividad reciente."""
 
+import webbrowser
+
 import customtkinter as ctk
 import theme as t
 from data import db
+from data import metrics
 from components.kpi_card import KPICard
 from components.charts import LineChartCard, DonutChartCard
+from components.scroll_fix import TrackpadScrollMixin
 
 
 # Mapa de colores por categoría (para los tags)
@@ -15,13 +19,19 @@ CATEGORY_COLORS = {
     "MALLA":          ("#EAF0E4", "#4A6730"),
     "CONVALIDACION":  ("#F0E9EE", "#6B3A5A"),
     "OTRO":           (t.SURFACE_2, t.MUTED),
+    "SIN CLASIF.":    (t.SURFACE_2, t.MUTED),
+    "BAJA":           ("#EAF0E4", "#4A6730"),
+    "MEDIA":          ("#F4ECE1", "#8B5A14"),
+    "ALTA":           (t.UDP_RED_SOFT, t.UDP_RED),
+    "CRÍTICA":        (t.UDP_RED_SOFT, t.UDP_RED),
 }
 
 
-class DashboardView(ctk.CTkScrollableFrame):
+class DashboardView(TrackpadScrollMixin, ctk.CTkScrollableFrame):
     """Scrollable view del dashboard completo."""
 
     def __init__(self, parent):
+        self._scroll_accum = 0.0
         super().__init__(
             parent,
             fg_color=t.BG,
@@ -60,24 +70,45 @@ class DashboardView(ctk.CTkScrollableFrame):
             text_color=t.MUTED, anchor="w",
         ).pack(anchor="w")
 
-        # Badge "Sistema operativo"
-        badge = ctk.CTkFrame(
-            head, fg_color=t.SUCCESS_BG, corner_radius=20, height=34,
-        )
-        badge.pack(side="right", anchor="ne")
-        badge.pack_propagate(False)
+        # Cluster derecho: badge de Prometheus + botón de Grafana
+        right = ctk.CTkFrame(head, fg_color="transparent")
+        right.pack(side="right", anchor="ne")
 
-        dot = ctk.CTkFrame(badge, width=8, height=8, fg_color=t.SUCCESS, corner_radius=4)
+        prom_ok = metrics.is_prometheus_reachable()
+        badge_bg = t.SUCCESS_BG if prom_ok else t.WARNING_BG
+        badge_fg = t.SUCCESS if prom_ok else t.WARNING
+        badge_txt = "Prometheus en línea" if prom_ok else "Prometheus no responde"
+
+        badge = ctk.CTkFrame(
+            right, fg_color=badge_bg, corner_radius=20, height=34,
+        )
+        badge.pack(side="left", padx=(0, 10))
+        badge.pack_propagate(False)
+        dot = ctk.CTkFrame(badge, width=8, height=8, fg_color=badge_fg, corner_radius=4)
         dot.pack(side="left", padx=(14, 6), pady=12)
         dot.pack_propagate(False)
         ctk.CTkLabel(
-            badge, text="Sistema operativo",
+            badge, text=badge_txt,
             font=(t.FONT_FAMILY, t.SIZE_SMALL, "bold"),
-            text_color=t.SUCCESS,
+            text_color=badge_fg,
         ).pack(side="left", padx=(0, 16))
+
+        ctk.CTkButton(
+            right, text="  Abrir Grafana  ",
+            font=(t.FONT_FAMILY, t.SIZE_SMALL, "bold"),
+            fg_color=t.UDP_RED,
+            hover_color=t.UDP_RED_DARK,
+            text_color="white",
+            corner_radius=6,
+            height=34,
+            command=self._abrir_grafana,
+        ).pack(side="left")
 
         # Separador
         ctk.CTkFrame(self, height=1, fg_color=t.BORDER).pack(fill="x", pady=(0, 28))
+
+    def _abrir_grafana(self):
+        webbrowser.open(metrics.get_grafana_url("/"))
 
     # ── KPI Cards ───────────────────────────────────────────────────────
     def _build_kpis(self):
@@ -135,14 +166,14 @@ class DashboardView(ctk.CTkScrollableFrame):
         LineChartCard(
             grid,
             title="Volumen de correos · Últimos 30 días",
-            subtitle="Diferenciado por respuesta automática y derivación manual.",
+            subtitle="Serie obtenida desde Prometheus (email_processed_total y llm_processing_latency_seconds_count).",
             datos=db.get_serie_historica(),
         ).grid(row=0, column=0, sticky="nsew", padx=(0, 9))
 
         DonutChartCard(
             grid,
-            title="Distribución por categoría",
-            subtitle="Total acumulado del mes.",
+            title="Base de conocimiento por tipo",
+            subtitle="Documentos activos en el motor RAG, agrupados por tipo.",
             datos=db.get_clasificaciones(),
         ).grid(row=0, column=1, sticky="nsew", padx=(9, 0))
 
@@ -195,8 +226,19 @@ class DashboardView(ctk.CTkScrollableFrame):
 
         # Filas
         correos = db.get_correos_recientes(8)
-        for i, c in enumerate(correos):
-            self._build_correo_row(card, c, alt=(i % 2 == 1))
+        if not correos:
+            empty = ctk.CTkFrame(card, fg_color="transparent", height=80)
+            empty.pack(fill="x")
+            empty.pack_propagate(False)
+            ctk.CTkLabel(
+                empty,
+                text="Sin correos procesados todavía. Inicia monitor_agente para empezar a poblar la tabla.",
+                font=(t.FONT_FAMILY, t.SIZE_SMALL),
+                text_color=t.MUTED,
+            ).pack(expand=True)
+        else:
+            for i, c in enumerate(correos):
+                self._build_correo_row(card, c, alt=(i % 2 == 1))
 
         # Padding inferior
         ctk.CTkFrame(card, height=14, fg_color="transparent").pack(fill="x")
@@ -245,21 +287,30 @@ class DashboardView(ctk.CTkScrollableFrame):
             text_color=fg_tag,
         ).pack(padx=8, pady=2)
 
-        # Confianza (barra)
+        # Confianza (barra). El sistema aún no expone confianza del clasificador,
+        # así que cuando viene None mostramos un guion limpio en lugar de la barra.
         conf_wrap = ctk.CTkFrame(row, fg_color="transparent")
         conf_wrap.place(relx=0.72, rely=0.5, anchor="w")
-        bar_bg = ctk.CTkFrame(conf_wrap, width=60, height=4,
-                              fg_color=t.BORDER_SOFT, corner_radius=2)
-        bar_bg.pack(side="left", pady=2)
-        bar_bg.pack_propagate(False)
-        fill_w = int(60 * correo["confianza"])
-        ctk.CTkFrame(bar_bg, width=fill_w, height=4,
-                     fg_color=t.UDP_RED, corner_radius=2).place(x=0, y=0)
-        ctk.CTkLabel(
-            conf_wrap, text=f" {int(correo['confianza']*100)}%",
-            font=(t.FONT_FAMILY, t.SIZE_TINY),
-            text_color=t.MUTED,
-        ).pack(side="left", padx=(6, 0))
+        confianza = correo.get("confianza")
+        if confianza is None:
+            ctk.CTkLabel(
+                conf_wrap, text="—",
+                font=(t.FONT_FAMILY, t.SIZE_SMALL),
+                text_color=t.MUTED,
+            ).pack(side="left")
+        else:
+            bar_bg = ctk.CTkFrame(conf_wrap, width=60, height=4,
+                                  fg_color=t.BORDER_SOFT, corner_radius=2)
+            bar_bg.pack(side="left", pady=2)
+            bar_bg.pack_propagate(False)
+            fill_w = int(60 * confianza)
+            ctk.CTkFrame(bar_bg, width=fill_w, height=4,
+                         fg_color=t.UDP_RED, corner_radius=2).place(x=0, y=0)
+            ctk.CTkLabel(
+                conf_wrap, text=f" {int(confianza*100)}%",
+                font=(t.FONT_FAMILY, t.SIZE_TINY),
+                text_color=t.MUTED,
+            ).pack(side="left", padx=(6, 0))
 
         # Estado
         if correo["estado"] == "respondido_auto":

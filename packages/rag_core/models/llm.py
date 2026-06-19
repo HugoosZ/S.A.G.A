@@ -1,4 +1,4 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI, HarmCategory, HarmBlockThreshold
 from packages.rag_core.utils import config
 from packages.rag_core.utils.logger import logger
 from typing import Dict, Any
@@ -14,12 +14,19 @@ class Agent:
         self._client = ChatGoogleGenerativeAI(
             model=self.model_name, 
             temperature=self.temperature, 
-            max_output_tokens=self.max_output_tokens
+            max_output_tokens=self.max_output_tokens,
+            safety_settings={
+                HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+                HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+            }
         )
 
     def generate(self, prompt: str, **kwargs) -> str:
         try:
             response = self._client.invoke(prompt)
+            logger.debug(f"Raw Gemini response: {repr(response)}")
             if isinstance(response, str):
                 return response
             content = response.content

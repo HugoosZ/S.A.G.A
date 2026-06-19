@@ -9,7 +9,7 @@ services:
     container_name: saga-bus-container
     platform: linux/amd64
     ports:
-      - "5001:5000"  # Expose 5000 port of the container on port 5001 of the host
+      - "15001:5000"  # Expose 5000 port of the container on port 5001 of the host
     networks:
       - saga-network
     restart: unless-stopped
@@ -21,7 +21,7 @@ services:
     image: chromadb/chroma:latest
     container_name: saga-chroma-container
     ports:
-      - "8000:8000"  # Expose 8000 default port of the container on port 8000 of the host
+      - "18000:8000"  # Expose 8000 default port of the container on port 8000 of the host
     volumes:
       # Index the PDFs on local storage
       - ./data/chroma_data:/data
@@ -46,6 +46,8 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+    networks:
+      - saga-network
     restart: unless-stopped
     networks:
       - saga-network  
@@ -156,9 +158,29 @@ services:
       - saga-network
     restart: unless-stopped
 
-  # ==========================================
-  # GRAPH DATABASE (De Código 2)
-  # ==========================================
+  service-recep:
+      build:
+        context: .
+        dockerfile: services/recep/Dockerfile 
+      container_name: saga-service-recep
+      environment:
+        - BUS_HOST=saga-bus
+        - BUS_PORT=5000
+        - POSTGRES_USER=saga_user
+        - POSTGRES_PASSWORD=saga_pass
+        - POSTGRES_DB=saga_db
+        - POSTGRES_HOST=db
+        - EMAIL_USUARIO=${EMAIL_USUARIO}
+        - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      depends_on:
+        - saga-bus
+        - db
+      ports:
+        - "8002:8002"
+      networks:
+        - saga-network
+      restart: unless-stopped
+
   saga-fuseki:
     image: secoresearch/fuseki:latest
     container_name: saga-fuseki
@@ -172,9 +194,7 @@ services:
       - saga-network
     restart: unless-stopped
 
-  # ==========================================
-  # OBSERVABILITY STACK (De Código 2)
-  # ==========================================
+
   prometheus:
     image: prom/prometheus:latest
     container_name: saga-prometheus

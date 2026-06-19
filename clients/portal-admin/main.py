@@ -4,6 +4,15 @@ Sistema de Apoyo y Gestión Académica
 Universidad Diego Portales - Facultad de Ingeniería y Ciencias
 """
 
+# Hacer visible el paquete `shared/` del monorepo antes de cualquier import.
+import os
+import sys
+from pathlib import Path
+
+_REPO_ROOT = Path(os.getenv("SAGA_REPO_ROOT") or Path(__file__).resolve().parents[2])
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 # Configurar apariencia ANTES de crear cualquier widget (crítico en macOS)
 import customtkinter as ctk
 ctk.set_appearance_mode("light")
