@@ -1,4 +1,3 @@
-# services/recep/Dockerfile
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -6,13 +5,12 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# 1. Copiar e instalar dependencias globales
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install psycopg2-binary
 
-# 2. COPIAS QUIRÚRGICAS: Copiar solo lo que necesita este microservicio
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt || true
+
 COPY shared/ ./shared/
 COPY services/recep/ ./services/recep/
 
-# Ejecutar el servicio resolviendo los paths desde la raíz /app
 CMD ["python", "-m", "services.recep.main"]

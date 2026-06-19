@@ -6,19 +6,14 @@ import email
 from email.header import decode_header
 import re
 from shared.soa_lib import connect_to_bus, send_message, receive_message
-from prometheus_client import start_http_server, Histogram, Counter
+import os #para leer variables de entorno   
 
-# Métricas de Monitoreo
-EMAIL_PROCESSING_LATENCY = Histogram('email_processing_latency_seconds', 'Time spent processing and sending an email')
-EMAIL_COUNT = Counter('email_processed_total', 'Total number of emails processed')
 
-# CONFIGURACIÓN
-IMAP_HOST = "imap.gmail.com"
-EMAIL_ACCOUNT = "poner correo "
-EMAIL_PASSWORD = "contraseña de aplicación"  # IMPORTANTE: Usar contraseña de aplicación, no la contraseña normal del correo
-BUS_HOST = "localhost"
-BUS_PORT = 5000
-
+IMAP_HOST = os.getenv("EMAIL_IMAP_SERVER", "imap.gmail.com")
+EMAIL_ACCOUNT = os.getenv("EMAIL_USUARIO")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+BUS_HOST = os.getenv("BUS_HOST", "saga-bus") 
+BUS_PORT = int(os.getenv("BUS_PORT", 5000))
 SERVICE_TARGET = "recep"
 
 logging.basicConfig(level=logging.INFO)
@@ -97,8 +92,7 @@ def fetch_unseen_emails():
             client.login(EMAIL_ACCOUNT, EMAIL_PASSWORD)
             client.select_folder("INBOX")
 
-            filtro_asunto = "Consulta de prueba SAGA"
-            messages = client.search(["UNSEEN", "SUBJECT", filtro_asunto])
+            messages = client.search(["UNSEEN"])
             
             if not messages:
                 return []
@@ -132,10 +126,6 @@ def fetch_unseen_emails():
 
 
 def run():
-    # Iniciar servidor de métricas de Prometheus en el puerto 8002
-    start_http_server(8002)
-    logger.info("Servidor de métricas Prometheus iniciado en el puerto 8002")
-
     while True:
         sock = None
         try:
@@ -146,13 +136,11 @@ def run():
                 logger.info("Conectado al bus para enviar lote de correos")
 
                 for email_data in emails:
-                    with EMAIL_PROCESSING_LATENCY.time():
-                        logger.info(f"Enviando correo: {email_data['subject']}")
+                    logger.info(f"Enviando correo: {email_data['subject']}")
 
                     payload_json = json.dumps(email_data, ensure_ascii=True)
                     
                     send_message(sock, SERVICE_TARGET, payload_json)
-                    EMAIL_COUNT.inc()
                     
                     response_bytes = receive_message(sock)
 

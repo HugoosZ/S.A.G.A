@@ -1,7 +1,6 @@
 import os
 import psycopg2
 
-
 def _env(*names: str, default: str) -> str:
     """Devuelve el primer env var no vacío de la lista, o `default`."""
     for n in names:
@@ -10,12 +9,9 @@ def _env(*names: str, default: str) -> str:
             return value
     return default
 
-
 def get_connection():
     """
-    Acepta dos convenciones para los datos de conexión:
-    - POSTGRES_* (usado por docker-compose, alineado con la imagen postgres).
-    - SAGA_DB_*  (alias para entornos que no quieren chocar con vars de otros servicios).
+    Acepta convenciones POSTGRES_* (docker-compose) y SAGA_DB_* (alias).
     """
     return psycopg2.connect(
         dbname=_env("POSTGRES_DB", "SAGA_DB_NAME", default="saga_db"),
@@ -25,15 +21,9 @@ def get_connection():
         port=_env("POSTGRES_PORT", "SAGA_DB_PORT", default="5432"),
     )
 
-
 def init_db():
-    """
-    Crea la tabla de emails e índices automáticamente si no existen en la DB.
-    """
-
     conn = get_connection()
     cur = conn.cursor()
-
     table_query = """
     CREATE TABLE IF NOT EXISTS emails (
         id SERIAL PRIMARY KEY,
@@ -59,15 +49,9 @@ def init_db():
         cur.close()
         conn.close()
 
-
 def init_documentos_db():
-    """
-    Crea la tabla de documentos institucionales que alimentan al motor RAG.
-    Es la fuente de verdad para el portal administrativo.
-    """
     conn = get_connection()
     cur = conn.cursor()
-
     table_query = """
     CREATE TABLE IF NOT EXISTS documentos (
         id SERIAL PRIMARY KEY,
@@ -94,14 +78,10 @@ def init_documentos_db():
         cur.close()
         conn.close()
 
-
-# ── DAO: documentos ─────────────────────────────────────────────────────────
-
 _DOC_COLS = (
     "id, nombre, tipo, fecha_carga, tamano_kb, paginas, "
     "estado, cargado_por, chunks_indexados, ruta_archivo"
 )
-
 
 def _row_to_documento(row):
     return {
@@ -117,20 +97,7 @@ def _row_to_documento(row):
         "ruta_archivo": row[9],
     }
 
-
-def upsert_documento(
-    nombre: str,
-    tipo: str,
-    tamano_kb: int,
-    paginas: int = 0,
-    chunks_indexados: int = 0,
-    ruta_archivo: str | None = None,
-    cargado_por: str = "Secretaría FIC",
-) -> dict:
-    """
-    Inserta o actualiza un documento por nombre. Si ya existe, se refresca
-    fecha_carga, tamano, páginas y chunks indexados.
-    """
+def upsert_documento(nombre: str, tipo: str, tamano_kb: int, paginas: int = 0, chunks_indexados: int = 0, ruta_archivo: str | None = None, cargado_por: str = "Secretaría FIC") -> dict:
     conn = get_connection()
     cur = conn.cursor()
     try:
@@ -163,7 +130,6 @@ def upsert_documento(
         cur.close()
         conn.close()
 
-
 def list_documentos(filtro_estado: str = "todos", filtro_tipo: str = "todos") -> list:
     conn = get_connection()
     cur = conn.cursor()
@@ -185,7 +151,6 @@ def list_documentos(filtro_estado: str = "todos", filtro_tipo: str = "todos") ->
     finally:
         cur.close()
         conn.close()
-
 
 def toggle_documento(doc_id: int) -> dict | None:
     conn = get_connection()
@@ -210,7 +175,6 @@ def toggle_documento(doc_id: int) -> dict | None:
         cur.close()
         conn.close()
 
-
 def delete_documento(doc_id: int) -> dict | None:
     conn = get_connection()
     cur = conn.cursor()
@@ -229,9 +193,7 @@ def delete_documento(doc_id: int) -> dict | None:
         cur.close()
         conn.close()
 
-
 def count_documentos_by_tipo() -> dict:
-    """Devuelve {tipo: cantidad} sólo de documentos activos."""
     conn = get_connection()
     cur = conn.cursor()
     try:
@@ -248,23 +210,11 @@ def count_documentos_by_tipo() -> dict:
         cur.close()
         conn.close()
 
-
-# ── DAO: emails / casos (lectura para el dashboard) ─────────────────────────
-
 def list_recent_emails(limit: int = 10) -> list:
-    """
-    Devuelve los correos más recientes con su estado derivado del módulo casos.
-    Si la tabla casos aún no existe (servicio casos no se ha levantado), se
-    asume 'recibido' como estado y se omite la unión.
-    """
     conn = get_connection()
     cur = conn.cursor()
     try:
-        cur.execute(
-            """
-            SELECT to_regclass('public.casos') IS NOT NULL;
-            """
-        )
+        cur.execute("SELECT to_regclass('public.casos') IS NOT NULL;")
         has_casos = cur.fetchone()[0]
 
         if has_casos:
@@ -301,7 +251,7 @@ def list_recent_emails(limit: int = 10) -> list:
                 "remitente": row[2] or "(desconocido)",
                 "fecha": row[3],
                 "thread_id": row[4],
-                "estado_caso": row[5],   # 'derivado' | 'resuelto_*' | None
+                "estado_caso": row[5],
                 "prioridad": row[6],
             }
             for row in rows
@@ -310,12 +260,7 @@ def list_recent_emails(limit: int = 10) -> list:
         cur.close()
         conn.close()
 
-
 def count_emails_by_estado_caso() -> dict:
-    """
-    Cuenta correos agrupando por estado del caso (derivado vs auto-procesado).
-    Útil como fallback cuando no hay clasificación por categoría.
-    """
     conn = get_connection()
     cur = conn.cursor()
     try:
